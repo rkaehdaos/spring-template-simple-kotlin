@@ -39,10 +39,8 @@ dependencies {
     implementation(libs.spring.boot.starter.webmvc)
     implementation(libs.kotlin.reflect)
     implementation(libs.jackson.module.kotlin)
-    compileOnly(libs.lombok)
     developmentOnly(libs.spring.boot.devtools)
     runtimeOnly(libs.h2)
-    annotationProcessor(libs.lombok)
     annotationProcessor(libs.spring.boot.configuration.processor)
     testImplementation(libs.spring.boot.starter.data.jpa.test)
     testImplementation(libs.spring.boot.starter.webmvc.test)
@@ -50,9 +48,7 @@ dependencies {
     // 아키텍처 테스트: ArchUnit(바이트코드 구조 규칙) + Konsist(코틀린 소스 컨벤션 규칙)
     testImplementation(libs.archunit.junit5)
     testImplementation(libs.konsist)
-    testCompileOnly(libs.lombok)
     testRuntimeOnly(libs.junit.platform.launcher)
-    testAnnotationProcessor(libs.lombok)
 }
 
 kotlin {
