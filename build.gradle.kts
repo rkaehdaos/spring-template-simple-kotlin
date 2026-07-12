@@ -98,5 +98,15 @@ tasks.named("compileAotJava", JavaCompile::class) {
 graalvmNative {
     binaries.all {
         buildArgs.add("-H:ExcludeResources=META-INF/services/org\\.hibernate\\.bytecode\\.spi\\.BytecodeProvider")
+
+        // Konsist 가 끌어오는 kotlin-compiler-embeddable jar 에는 jline native-image.properties 가
+        // 번들돼 있으나, 그 properties 가 참조하는 reflection/resource-config.json 은 shading 시 누락돼 있다.
+        // native-image 가 클래스패스의 native-image.properties 를 자동 로드하다
+        // "Could not find reflection configuration resource ...jline-terminal/reflection-config.json" 으로
+        // nativeTestCompile 초기화 단계에서 실패하므로, 해당 jar 의 내장 네이티브 설정을 통째로 무시한다.
+        // (ArchitectureTest/KonsistTest 자체는 @DisabledInNativeImage 로 이미 네이티브 실행에서 제외됨)
+        buildArgs.add("--exclude-config")
+        buildArgs.add(".*kotlin-compiler-embeddable.*\\.jar")
+        buildArgs.add("META-INF/native-image/.*")
     }
 }
