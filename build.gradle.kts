@@ -13,12 +13,6 @@ group = "dev.haja"
 version = "0.0.1-SNAPSHOT"
 description = "spring-template-simple-kotlin"
 
-java {
-    toolchain {
-        languageVersion = JavaLanguageVersion.of(25)
-    }
-}
-
 // PMD: Java 소스 정적분석. 현재 Kotlin 전용이라 pmdMain은 NO-SOURCE로 스킵되며,
 // 향후 Java 소스가 추가되면 자동으로 룰이 적용된다.
 pmd {
@@ -52,6 +46,7 @@ dependencies {
 }
 
 kotlin {
+    jvmToolchain(25)
     compilerOptions {
         freeCompilerArgs.addAll("-Xjsr305=strict", "-Xannotation-default-target=param-property")
     }
