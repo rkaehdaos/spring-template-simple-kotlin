@@ -23,7 +23,7 @@ jackson-module-kotlin = { module = "tools.jackson.module:jackson-module-kotlin" 
 h2 = { module = "com.h2database:h2" }
 junit-platform-launcher = { module = "org.junit.platform:junit-platform-launcher" }
 # 버전 명시
-archunit-junit5 = { module = "com.tngtech.archunit:archunit-junit5", version.ref = "archunit" }
+archunit = { module = "com.tngtech.archunit:archunit", version.ref = "archunit" }
 konsist = { module = "com.lemonappdev:konsist", version.ref = "konsist" }
 
 [plugins]

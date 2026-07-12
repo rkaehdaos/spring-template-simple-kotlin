@@ -46,7 +46,7 @@ dependencies {
     testImplementation(libs.spring.boot.starter.webmvc.test)
     testImplementation(libs.kotlin.test.junit5)
     // 아키텍처 테스트: ArchUnit(바이트코드 구조 규칙) + Konsist(코틀린 소스 컨벤션 규칙)
-    testImplementation(libs.archunit.junit5)
+    testImplementation(libs.archunit)
     testImplementation(libs.konsist)
     testRuntimeOnly(libs.junit.platform.launcher)
 }
