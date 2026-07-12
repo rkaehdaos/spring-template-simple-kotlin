@@ -4,7 +4,7 @@ plugins {
     id("org.springframework.boot") version "4.1.0"
     id("io.spring.dependency-management") version "1.1.7"
     id("org.hibernate.orm") version "7.4.1.Final"
-    id("org.graalvm.buildtools.native") version "1.1.1"
+    id("org.graalvm.buildtools.native") version "1.1.4"
     kotlin("plugin.jpa") version "2.3.21"
 }
 
@@ -74,6 +74,12 @@ tasks.named("compileAotJava", JavaCompile::class) {
         "-Xlint:none"  // 모든 경고 완전 제거
     ))
 }
+
+// NOTE: processTestAot는 활성화 유지.
+// 네이티브 테스트(nativeTest)에서 Spring TestContext 프레임워크가 동작하려면
+// 테스트 AOT가 생성하는 리플렉션/리소스 메타데이터가 필요하다.
+// (비활성화 시 BootstrapUtils 초기화 실패 → WebAppConfiguration ClassNotFoundException)
+
 
 // GraalVM 네이티브 이미지: Hibernate ByteBuddy BytecodeProvider 서비스 디스크립터를 이미지에서 제외.
 // 최신 GraalVM(JDK 25)은 서비스 디스크립터 리소스를 무조건 이미지에 포함하는데, spring-orm은
