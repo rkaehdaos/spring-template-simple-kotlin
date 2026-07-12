@@ -1,5 +1,6 @@
 package dev.haja.springtemplatesimplekotlin.controller
 
+import dev.haja.springtemplatesimplekotlin.service.MemoNotFoundException
 import dev.haja.springtemplatesimplekotlin.service.MemoService
 import org.junit.jupiter.api.Test
 import org.mockito.BDDMockito.given
@@ -21,7 +22,7 @@ class MemoControllerTest @Autowired constructor(
     @Test
     fun `존재하지 않는 메모 조회는 404 ProblemDetail 응답`() {
         given(memoService.findById(999L))
-            .willThrow(NoSuchElementException("Memo not found: id=999"))
+            .willThrow(MemoNotFoundException(999))
 
         mockMvc.perform(get("/api/memos/999"))
             .andExpect(status().isNotFound)

@@ -1,6 +1,7 @@
 package dev.haja.springtemplatesimplekotlin.controller
 
 import dev.haja.springtemplatesimplekotlin.domain.Memo
+import dev.haja.springtemplatesimplekotlin.service.MemoNotFoundException
 import dev.haja.springtemplatesimplekotlin.service.MemoService
 import org.springframework.http.HttpStatus
 import org.springframework.http.ProblemDetail
@@ -35,8 +36,8 @@ class MemoController(
 /** 존재하지 않는 리소스 조회 시 500 대신 404 + ProblemDetail(RFC 7807) 응답 */
 @RestControllerAdvice
 class GlobalExceptionHandler {
-    @ExceptionHandler(NoSuchElementException::class)
-    fun handleNotFound(e: NoSuchElementException): ProblemDetail =
+    @ExceptionHandler(MemoNotFoundException::class)
+    fun handleNotFound(e: MemoNotFoundException): ProblemDetail =
         ProblemDetail.forStatusAndDetail(HttpStatus.NOT_FOUND, e.message ?: "Not Found")
 }
 
