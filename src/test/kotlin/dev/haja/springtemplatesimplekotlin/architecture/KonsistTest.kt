@@ -77,6 +77,7 @@ class KonsistTest {
 
     @Test
     fun `테스트 클래스 이름은 Test 또는 Tests 로 끝난다`() {
+        // Kotest 스펙은 `@Test`를 쓰지 않으므로 이 규칙에 걸리지 않는다.
         Konsist.scopeFromTest()
             .classes()
             .filter { cls -> cls.functions().any { it.hasAnnotationOf(Test::class) } }

@@ -42,6 +42,9 @@ dependencies {
     // 아키텍처 테스트: ArchUnit(바이트코드 구조 규칙) + Konsist(코틀린 소스 컨벤션 규칙)
     testImplementation(libs.archunit)
     testImplementation(libs.konsist)
+    // Kotest: 코틀린 친화적 테스트 프레임워크(스펙 스타일 + 매처)
+    testImplementation(libs.kotest.runner.junit5)
+    testImplementation(libs.kotest.assertions.core)
     testRuntimeOnly(libs.junit.platform.launcher)
 }
 
