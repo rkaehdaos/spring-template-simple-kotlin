@@ -23,7 +23,10 @@ import org.springframework.web.bind.annotation.RestController
 @DisabledInNativeImage // Konsist 는 네이티브 이미지에서 동작 불가 (파일 파싱/리플렉션)
 class KonsistTest {
 
+    // scope 생성은 파일 시스템 전체를 파싱하므로 필드로 한 번만 초기화해 공유한다.
     private val production = Konsist.scopeFromProduction()
+    private val project = Konsist.scopeFromProject()
+    private val test = Konsist.scopeFromTest()
 
     @Test
     fun `@Service 클래스는 이름이 Service 로 끝난다`() {
@@ -48,14 +51,14 @@ class KonsistTest {
 
     @Test
     fun `패키지 선언은 디렉터리 경로와 일치한다`() {
-        Konsist.scopeFromProject()
+        project
             .packages
             .assertTrue { it.hasMatchingPath }
     }
 
     @Test
     fun `필드 주입 금지 - @Autowired 프로퍼티 없음 (생성자 주입만 허용)`() {
-        Konsist.scopeFromProject()
+        project
             .properties()
             .assertFalse { it.hasAnnotationOf(Autowired::class) }
     }
@@ -69,7 +72,7 @@ class KonsistTest {
 
     @Test
     fun `와일드카드 import 금지`() {
-        Konsist.scopeFromProject()
+        project
             .files
             .flatMap { it.imports }
             .assertFalse { it.isWildcard }
@@ -78,7 +81,7 @@ class KonsistTest {
     @Test
     fun `테스트 클래스 이름은 Test 또는 Tests 로 끝난다`() {
         // Kotest 스펙은 `@Test`를 쓰지 않으므로 이 규칙에 걸리지 않는다.
-        Konsist.scopeFromTest()
+        test
             .classes()
             .filter { cls -> cls.functions().any { it.hasAnnotationOf(Test::class) } }
             .assertTrue { it.name.endsWith("Test") || it.name.endsWith("Tests") }
