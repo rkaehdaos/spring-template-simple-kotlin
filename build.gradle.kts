@@ -1,11 +1,11 @@
 plugins {
-    kotlin("jvm") version "2.3.21"
-    kotlin("plugin.spring") version "2.3.21"
-    id("org.springframework.boot") version "4.1.0"
-    id("io.spring.dependency-management") version "1.1.7"
-    id("org.hibernate.orm") version "7.4.1.Final"
-    id("org.graalvm.buildtools.native") version "1.1.4"
-    kotlin("plugin.jpa") version "2.3.21"
+    alias(libs.plugins.kotlin.jvm)
+    alias(libs.plugins.kotlin.spring)
+    alias(libs.plugins.spring.boot)
+    alias(libs.plugins.spring.dependency.management)
+    alias(libs.plugins.hibernate.orm)
+    alias(libs.plugins.graalvm.native)
+    alias(libs.plugins.kotlin.jpa)
     pmd  // Gradle 내장 core 플러그인 — 버전 표기 불필요
 }
 
@@ -22,7 +22,7 @@ java {
 // PMD: Java 소스 정적분석. 현재 Kotlin 전용이라 pmdMain은 NO-SOURCE로 스킵되며,
 // 향후 Java 소스가 추가되면 자동으로 룰이 적용된다.
 pmd {
-    toolVersion = "7.24.0"                          // Gradle 9.6.1 공식 지원 상한
+    toolVersion = libs.versions.pmd.get()           // Gradle 9.6.1 공식 지원 상한
     ruleSetFiles = files(".github/pmd/ruleset.xml")
     ruleSets = listOf()                             // 기본 룰셋(errorprone) 비활성화 명시
     sourceSets = listOf(project.sourceSets["main"]) // test/aot/aotTest 제외 — main만 check에 연결
@@ -34,25 +34,25 @@ repositories {
 }
 
 dependencies {
-    implementation("org.springframework.boot:spring-boot-h2console")
-    implementation("org.springframework.boot:spring-boot-starter-data-jpa")
-    implementation("org.springframework.boot:spring-boot-starter-webmvc")
-    implementation("org.jetbrains.kotlin:kotlin-reflect")
-    implementation("tools.jackson.module:jackson-module-kotlin")
-    compileOnly("org.projectlombok:lombok")
-    developmentOnly("org.springframework.boot:spring-boot-devtools")
-    runtimeOnly("com.h2database:h2")
-    annotationProcessor("org.projectlombok:lombok")
-    annotationProcessor("org.springframework.boot:spring-boot-configuration-processor")
-    testImplementation("org.springframework.boot:spring-boot-starter-data-jpa-test")
-    testImplementation("org.springframework.boot:spring-boot-starter-webmvc-test")
-    testImplementation("org.jetbrains.kotlin:kotlin-test-junit5")
+    implementation(libs.spring.boot.h2console)
+    implementation(libs.spring.boot.starter.data.jpa)
+    implementation(libs.spring.boot.starter.webmvc)
+    implementation(libs.kotlin.reflect)
+    implementation(libs.jackson.module.kotlin)
+    compileOnly(libs.lombok)
+    developmentOnly(libs.spring.boot.devtools)
+    runtimeOnly(libs.h2)
+    annotationProcessor(libs.lombok)
+    annotationProcessor(libs.spring.boot.configuration.processor)
+    testImplementation(libs.spring.boot.starter.data.jpa.test)
+    testImplementation(libs.spring.boot.starter.webmvc.test)
+    testImplementation(libs.kotlin.test.junit5)
     // 아키텍처 테스트: ArchUnit(바이트코드 구조 규칙) + Konsist(코틀린 소스 컨벤션 규칙)
-    testImplementation("com.tngtech.archunit:archunit-junit5:1.4.2")
-    testImplementation("com.lemonappdev:konsist:0.17.3")
-    testCompileOnly("org.projectlombok:lombok")
-    testRuntimeOnly("org.junit.platform:junit-platform-launcher")
-    testAnnotationProcessor("org.projectlombok:lombok")
+    testImplementation(libs.archunit.junit5)
+    testImplementation(libs.konsist)
+    testCompileOnly(libs.lombok)
+    testRuntimeOnly(libs.junit.platform.launcher)
+    testAnnotationProcessor(libs.lombok)
 }
 
 kotlin {
