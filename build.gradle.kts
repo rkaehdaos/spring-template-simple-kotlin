@@ -6,6 +6,7 @@ plugins {
     id("org.hibernate.orm") version "7.4.1.Final"
     id("org.graalvm.buildtools.native") version "1.1.4"
     kotlin("plugin.jpa") version "2.3.21"
+    pmd  // Gradle 내장 core 플러그인 — 버전 표기 불필요
 }
 
 group = "dev.haja"
@@ -16,6 +17,16 @@ java {
     toolchain {
         languageVersion = JavaLanguageVersion.of(25)
     }
+}
+
+// PMD: Java 소스 정적분석. 현재 Kotlin 전용이라 pmdMain은 NO-SOURCE로 스킵되며,
+// 향후 Java 소스가 추가되면 자동으로 룰이 적용된다.
+pmd {
+    toolVersion = "7.24.0"                          // Gradle 9.6.1 공식 지원 상한
+    ruleSetFiles = files(".github/pmd/ruleset.xml")
+    ruleSets = listOf()                             // 기본 룰셋(errorprone) 비활성화 명시
+    sourceSets = listOf(project.sourceSets["main"]) // test/aot/aotTest 제외 — main만 check에 연결
+    isConsoleOutput = true
 }
 
 repositories {
