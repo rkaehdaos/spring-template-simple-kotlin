@@ -2,7 +2,7 @@
 kotlin = "2.4.0"
 spring-boot = "4.1.0"
 spring-dependency-management = "1.1.7"
-hibernate = "7.4.1.Final"
+hibernate = "7.4.3.Final"
 graalvm-buildtools = "1.1.4"
 archunit = "1.4.2"
 konsist = "0.17.3"
