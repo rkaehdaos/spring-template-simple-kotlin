@@ -49,8 +49,11 @@ kover {
 
 sonar {
     properties {
-        property("sonar.projectKey", "rkaehdaos_spring-template-simple-kotlin")
-        property("sonar.organization", "rkaehdaos")
+        // -PsonarProjectKey / -PsonarOrganization 으로 오버라이드 가능 (템플릿 포크 시 조정)
+        property("sonar.projectKey", providers.gradleProperty("sonarProjectKey")
+            .getOrElse("rkaehdaos_spring-template-simple-kotlin"))
+        property("sonar.organization", providers.gradleProperty("sonarOrganization")
+            .getOrElse("rkaehdaos"))
         property("sonar.host.url", "https://sonarcloud.io")
         property("sonar.coverage.jacoco.xmlReportPaths",
             layout.buildDirectory.file("reports/kover/report.xml").get().asFile.path)

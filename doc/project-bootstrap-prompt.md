@@ -167,8 +167,11 @@ kover {
 
 sonar {
     properties {
-        property("sonar.projectKey", "{{SONAR_ORG}}_{{PROJECT_NAME}}")
-        property("sonar.organization", "{{SONAR_ORG}}")
+        // -PsonarProjectKey / -PsonarOrganization 으로 오버라이드 가능
+        property("sonar.projectKey", providers.gradleProperty("sonarProjectKey")
+            .getOrElse("{{SONAR_ORG}}_{{PROJECT_NAME}}"))
+        property("sonar.organization", providers.gradleProperty("sonarOrganization")
+            .getOrElse("{{SONAR_ORG}}"))
         property("sonar.host.url", "https://sonarcloud.io")
         property("sonar.coverage.jacoco.xmlReportPaths",
             layout.buildDirectory.file("reports/kover/report.xml").get().asFile.path)
