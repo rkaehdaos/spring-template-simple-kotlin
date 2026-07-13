@@ -6,6 +6,8 @@ plugins {
     alias(libs.plugins.hibernate.orm)
     alias(libs.plugins.graalvm.native)
     alias(libs.plugins.kotlin.jpa)
+    alias(libs.plugins.kover)
+    alias(libs.plugins.sonarqube)
     pmd  // Gradle 내장 core 플러그인 — 버전 표기 불필요
 }
 
@@ -21,6 +23,43 @@ pmd {
     ruleSets = listOf()                             // 기본 룰셋(errorprone) 비활성화 명시
     sourceSets = listOf(project.sourceSets["main"]) // test/aot/aotTest 제외 — main만 check에 연결
     isConsoleOutput = true
+}
+
+// Kover: 코틀린 코드 커버리지 — XML(Sonar 연동)/HTML 리포트 + 최소 기준 검증(check에 자동 연결)
+kover {
+    reports {
+        filters {
+            includes {
+                classes("dev.haja.springtemplatesimplekotlin.*")
+            }
+            excludes {
+                // 부트스트랩 클래스는 커버리지 대상에서 제외
+                classes("dev.haja.springtemplatesimplekotlin.SpringTemplateSimpleKotlinApplication*")
+                // Spring AOT 생성 클래스(…__BeanDefinitions, …__TestContext*, …__AotRepository 등) 제외
+                classes("*__*")
+            }
+        }
+        verify {
+            rule {
+                minBound(30) // 라인 커버리지 30% 미만이면 check/build 실패 (현재 30.8% — 테스트 보강 시 상향)
+            }
+        }
+    }
+}
+
+sonar {
+    properties {
+        property("sonar.projectKey", "rkaehdaos_spring-template-simple-kotlin")
+        property("sonar.organization", "rkaehdaos")
+        property("sonar.host.url", "https://sonarcloud.io")
+        property("sonar.coverage.jacoco.xmlReportPaths",
+            layout.buildDirectory.file("reports/kover/report.xml").get().asFile.path)
+    }
+}
+
+// sonar 분석 전에 Kover XML 리포트 생성 보장
+tasks.named("sonar") {
+    dependsOn(tasks.named("koverXmlReport"))
 }
 
 repositories {
