@@ -11,7 +11,7 @@ Spring Boot **4.1.0** + Kotlin **2.4.0** + JDK **25(GraalVM)** 기반 템플릿 
 - 웹: Spring MVC (`spring-boot-starter-webmvc`)
 - 네이티브 이미지: GraalVM Native Build Tools 지원
 - 정적분석: PMD 7.24.0 (커스텀 룰셋 `.github/pmd/ruleset.xml`, 메서드 NCSS 30줄 제한, main 소스셋만)
-- 커버리지: Kover (라인 60% 미만이면 check 실패) + SonarCloud 연동 (`.github/workflows/build.yml`, `SONAR_TOKEN` secret 필요)
+- 커버리지: Kover (라인 30% 미만이면 check 실패) + SonarCloud 연동 (`.github/workflows/build.yml`, `SONAR_TOKEN` secret 필요)
 - 샘플 도메인: `Memo` (최소 CRUD — 아키텍처 규칙 예시용)
 
 ## 필수 명령
