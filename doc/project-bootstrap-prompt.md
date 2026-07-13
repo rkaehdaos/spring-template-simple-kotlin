@@ -566,7 +566,7 @@ jobs:
         with:
           distribution: graalvm # mise.toml(oracle-graalvm-25)과 정합
           java-version: '25'
-      - uses: gradle/actions/setup-gradle@v4
+      - uses: gradle/actions/setup-gradle@3f131e8634966bd73d06cc69884922b02e6faf92 # v6.2.0 — 서드파티 액션은 SHA 핀 고정(Sonar S7637)
       - name: Build & Test (koverVerify 포함)
         run: ./gradlew build koverXmlReport
       - name: SonarCloud 분석
@@ -575,6 +575,12 @@ jobs:
           SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: ./gradlew sonar
+```
+
+의존성 검증 메타데이터 생성(Sonar S8569/S6474 대응 — 생성된 `gradle/verification-metadata.xml`을 커밋):
+
+```bash
+./gradlew --write-verification-metadata sha256 clean build koverXmlReport
 ```
 
 ## 8. Step 5 — 메인 소스 코드

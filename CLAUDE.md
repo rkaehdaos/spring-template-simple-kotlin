@@ -59,6 +59,7 @@ mise install              # oracle-graalvm-25.0.3 설치 (mise.toml)
   - `org.springframework.test.context.bean.override.mockito.MockitoBean`
   - Jackson 3: `tools.jackson.module:jackson-module-kotlin` (`com.fasterxml` 아님)
 - 의존성 버전은 반드시 `gradle/libs.versions.toml` 버전 카탈로그로 관리
+- 의존성 추가/버전 변경 시 `./gradlew --write-verification-metadata sha256 clean build koverXmlReport`로 `gradle/verification-metadata.xml` 재생성 필수 (누락 시 빌드 실패)
 - `build.gradle.kts`의 GraalVM `buildArgs`와 주석은 네이티브 빌드 실패 회피용 — 임의 삭제 금지
 - 샘플 `Memo` 도메인 삭제 시 KonsistTest 규칙도 함께 정리할 것 (Konsist `assertTrue`는 빈 리스트에서 예외 발생)
 - `mise.toml`, `HELP.md`는 `.gitignore` 대상 (커밋되지 않는 것이 정상)

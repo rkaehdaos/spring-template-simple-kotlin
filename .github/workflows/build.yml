@@ -16,7 +16,7 @@ jobs:
         with:
           distribution: graalvm # mise.toml(oracle-graalvm-25)과 정합
           java-version: '25'
-      - uses: gradle/actions/setup-gradle@v4
+      - uses: gradle/actions/setup-gradle@3f131e8634966bd73d06cc69884922b02e6faf92 # v6.2.0 — 서드파티 액션은 SHA 핀 고정(S7637)
       - name: Build & Test (koverVerify 포함)
         run: ./gradlew build koverXmlReport
       - name: SonarCloud 분석
