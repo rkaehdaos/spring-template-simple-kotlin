@@ -583,6 +583,35 @@ jobs:
 ./gradlew --write-verification-metadata sha256 clean build koverXmlReport
 ```
 
+⚠️ **`--write-verification-metadata`는 그 실행에서 실제로 해석된 아티팩트만 기록한다.**
+detached configuration에서 끌어오는 일부 `.pom`(대표적으로 `org.hibernate.orm:hibernate-platform`의
+pom)은 로컬 Gradle 캐시 상태에 따라 해석이 생략되어 메타데이터에서 빠질 수 있다. 이 경우
+로컬(warm cache)에서는 빌드가 통과하지만 CI(cold cache)에서만
+`DependencyVerificationException: One artifact failed verification: hibernate-platform-<버전>.pom`
+으로 실패한다. 따라서 생성 직후 **`.module`뿐 아니라 `.pom` 항목까지 존재하는지** 반드시 확인한다:
+
+```bash
+grep "hibernate-platform-<버전>.pom" gradle/verification-metadata.xml   # 예: 7.4.3.Final
+```
+
+항목이 없으면 Maven Central의 공식 sha256과 직접 계산값을 대조한 뒤 해당 component 블록에
+`<artifact>` 항목을 수동으로 추가한다:
+
+```bash
+V=7.4.3.Final
+BASE=https://repo.maven.apache.org/maven2/org/hibernate/orm/hibernate-platform/$V/hibernate-platform-$V.pom
+curl -s "$BASE" | shasum -a 256          # 계산값
+curl -s "$BASE.sha256"                    # Maven Central 공식 게시값 — 위와 일치해야 함
+```
+
+`verification-metadata.xml`의 `hibernate-platform` component 블록에 아래처럼 추가(`.module` 항목 형식 참고):
+
+```xml
+<artifact name="hibernate-platform-7.4.3.Final.pom">
+   <sha256 value="61c0faadd73127c2d80381b86d2426625429490651f4f8b05fbabc5e116ff27f" origin="Maven Central published checksum"/>
+</artifact>
+```
+
 ## 8. Step 5 — 메인 소스 코드
 
 아래에서 `{{BASE_PACKAGE}}` = `{{GROUP}}.{{PACKAGE_SEGMENT}}` (예: `dev.haja.demoservice`).
@@ -1117,6 +1146,12 @@ git commit -m "🎉 release(config): initialize {{PROJECT_NAME}} 프로젝트"
 빌드 실패 시: 에러를 읽고 수정하되, **0장의 규칙(최신 명칭 교정 금지)을 위반하는 방향의
 수정은 절대 하지 마라.** 대부분의 실패 원인은 placeholder 미치환 또는 오타다.
 
+**CI에서만 `DependencyVerificationException: One artifact failed verification: ...pom` 발생 시**:
+코드 문제가 아니라 검증 메타데이터 누락이다(§7 참고 — 로컬 warm cache에서는 해당 `.pom`이
+해석되지 않아 메타데이터에 기록되지 않았을 수 있다). **`verify-metadata`를 끄거나
+`verification-metadata.xml`을 삭제하는 방향으로 "해결"하지 마라.** 올바른 대처는 Maven Central
+공식 sha256을 대조한 뒤 누락된 `.pom` artifact 항목을 해당 component 블록에 수동 추가하는 것이다.
+
 ## 13. 주의사항 부록
 
 - `Memo`, `MemoService`, `MemoController` 등은 **샘플 도메인**이며 프로젝트 이름이 아니다. 치환 금지.
@@ -1126,3 +1161,4 @@ git commit -m "🎉 release(config): initialize {{PROJECT_NAME}} 프로젝트"
 - Kover 필터의 `*__*` 제외는 Spring AOT 생성 클래스(`__BeanDefinitions`, `__TestContext*` 등)가 분모를 부풀려 커버리지를 왜곡(실측 0.25%까지 하락)하는 것을 막는 설정 — 임의 삭제 금지.
 - `minBound(30)`은 샘플 코드 실측 커버리지(30.8%) 기준 — 테스트 보강 시 상향할 것.
 - Mockito 기반 테스트(`@MockitoBean`/`@WebMvcTest` 등)는 런타임에 ByteBuddy로 동적 바이트코드를 생성하므로 GraalVM 네이티브 이미지에서 동작 불가하다. `nativeTest` 실행 시 AOT 컨텍스트 초기화 중 Mockito 클래스 초기화 실패(`NoClassDefFoundError`)로 `ApplicationContext` 로드가 깨진다. 따라서 `MemoControllerTest`에는 `@DisabledInNativeImage`가 반드시 부여돼 있어야 하며(JVM `test` 태스크에서는 계속 실행되어 커버리지에 영향 없음), 이 어노테이션을 임의 제거하지 마라. 이후 추가되는 Mockito/목 기반 테스트도 동일하게 처리할 것.
+- `gradle/verification-metadata.xml`은 로컬에서 완전해 보여도 CI cold cache에서만 누락이 드러날 수 있다. `--write-verification-metadata`는 실행 시 실제 해석된 아티팩트만 기록하므로, detached configuration의 `.pom`(예: `hibernate-platform`)이 로컬에서 캐시로만 충족되면 메타데이터에서 빠진다. 생성 후 §7의 grep 확인 절차를 반드시 거치고, CI에서 pom 검증 실패가 나면 검증을 끄지 말고 공식 sha256으로 항목을 보강할 것(§7·§12 참고).
