@@ -774,6 +774,7 @@ package {{BASE_PACKAGE}}.controller
 import {{BASE_PACKAGE}}.service.MemoNotFoundException
 import {{BASE_PACKAGE}}.service.MemoService
 import org.junit.jupiter.api.Test
+import org.junit.jupiter.api.condition.DisabledInNativeImage
 import org.mockito.BDDMockito.given
 import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.boot.webmvc.test.autoconfigure.WebMvcTest
@@ -783,6 +784,7 @@ import org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get
 import org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath
 import org.springframework.test.web.servlet.result.MockMvcResultMatchers.status
 
+@DisabledInNativeImage // Mockito(@MockitoBean)는 런타임 바이트코드 생성이 필요해 네이티브 이미지에서 동작 불가
 @WebMvcTest(MemoController::class)
 class MemoControllerTest @Autowired constructor(
     private val mockMvc: MockMvc,
@@ -1068,6 +1070,7 @@ mise install              # oracle-graalvm-25.0.3 설치 (mise.toml)
   - Jackson 3: `tools.jackson.module:jackson-module-kotlin` (`com.fasterxml` 아님)
 - 의존성 버전은 반드시 `gradle/libs.versions.toml` 버전 카탈로그로 관리
 - `build.gradle.kts`의 GraalVM `buildArgs`와 주석은 네이티브 빌드 실패 회피용 — 임의 삭제 금지
+- Mockito 기반 테스트(`@MockitoBean`/`@WebMvcTest` 등)는 런타임 바이트코드 생성이 필요해 네이티브 이미지(`nativeTest`)에서 동작 불가 → `@DisabledInNativeImage` 필수 (ArchUnit/Konsist 테스트도 동일)
 - 샘플 `Memo` 도메인 삭제 시 KonsistTest 규칙도 함께 정리할 것 (Konsist `assertTrue`는 빈 리스트에서 예외 발생)
 - `mise.toml`, `HELP.md`는 `.gitignore` 대상 (커밋되지 않는 것이 정상)
 ```
@@ -1104,6 +1107,12 @@ git commit -m "🎉 release(config): initialize {{PROJECT_NAME}} 프로젝트"
    ```
    확인 후 bootRun 종료.
 6. (선택, 장시간) `./gradlew nativeCompile`
+7. (선택, 장시간) `./gradlew nativeTest` → **BUILD SUCCESSFUL**. 단, 네이티브 이미지에서는
+   `contextLoads`(`{{CLASS_PREFIX}}ApplicationTests`) 1개만 실행/통과하고
+   `MemoControllerTest`(Mockito)·`ArchitectureTest`·`KonsistTest`는 모두
+   `@DisabledInNativeImage`로 **스킵되는 것이 정상**이다. 스킵을 실패로 오인해
+   어노테이션을 제거하지 마라 — Mockito/ArchUnit/Konsist는 런타임 바이트코드
+   생성·`.class` 파싱에 의존해 네이티브 이미지에서 근본적으로 동작할 수 없다.
 
 빌드 실패 시: 에러를 읽고 수정하되, **0장의 규칙(최신 명칭 교정 금지)을 위반하는 방향의
 수정은 절대 하지 마라.** 대부분의 실패 원인은 placeholder 미치환 또는 오타다.
@@ -1116,3 +1125,4 @@ git commit -m "🎉 release(config): initialize {{PROJECT_NAME}} 프로젝트"
 - 이슈 템플릿은 이 템플릿에 포함되지 않는다 — 생성하지 마라. (CI 워크플로우 `build.yml`은 포함 대상.)
 - Kover 필터의 `*__*` 제외는 Spring AOT 생성 클래스(`__BeanDefinitions`, `__TestContext*` 등)가 분모를 부풀려 커버리지를 왜곡(실측 0.25%까지 하락)하는 것을 막는 설정 — 임의 삭제 금지.
 - `minBound(30)`은 샘플 코드 실측 커버리지(30.8%) 기준 — 테스트 보강 시 상향할 것.
+- Mockito 기반 테스트(`@MockitoBean`/`@WebMvcTest` 등)는 런타임에 ByteBuddy로 동적 바이트코드를 생성하므로 GraalVM 네이티브 이미지에서 동작 불가하다. `nativeTest` 실행 시 AOT 컨텍스트 초기화 중 Mockito 클래스 초기화 실패(`NoClassDefFoundError`)로 `ApplicationContext` 로드가 깨진다. 따라서 `MemoControllerTest`에는 `@DisabledInNativeImage`가 반드시 부여돼 있어야 하며(JVM `test` 태스크에서는 계속 실행되어 커버리지에 영향 없음), 이 어노테이션을 임의 제거하지 마라. 이후 추가되는 Mockito/목 기반 테스트도 동일하게 처리할 것.
