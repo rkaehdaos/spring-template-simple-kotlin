@@ -1138,10 +1138,9 @@ git commit -m "🎉 release(config): initialize {{PROJECT_NAME}} 프로젝트"
 6. (선택, 장시간) `./gradlew nativeCompile`
 7. (선택, 장시간) `./gradlew nativeTest` → **BUILD SUCCESSFUL**. 단, 네이티브 이미지에서는
    `contextLoads`(`{{CLASS_PREFIX}}ApplicationTests`) 1개만 실행/통과하고
-   `MemoControllerTest`(Mockito)·`ArchitectureTest`·`KonsistTest`는 모두
-   `@DisabledInNativeImage`로 **스킵되는 것이 정상**이다. 스킵을 실패로 오인해
-   어노테이션을 제거하지 마라 — Mockito/ArchUnit/Konsist는 런타임 바이트코드
-   생성·`.class` 파싱에 의존해 네이티브 이미지에서 근본적으로 동작할 수 없다.
+   `MemoControllerTest`·`ArchitectureTest`·`KonsistTest`는 모두 `@DisabledInNativeImage`로
+   **스킵되는 것이 정상**이다. 스킵을 실패로 오인해 어노테이션을 제거하지 마라
+   (각 테스트가 네이티브 이미지에서 동작 불가한 사유는 §13 부록 참고).
 
 빌드 실패 시: 에러를 읽고 수정하되, **0장의 규칙(최신 명칭 교정 금지)을 위반하는 방향의
 수정은 절대 하지 마라.** 대부분의 실패 원인은 placeholder 미치환 또는 오타다.
@@ -1160,5 +1159,8 @@ git commit -m "🎉 release(config): initialize {{PROJECT_NAME}} 프로젝트"
 - 이슈 템플릿은 이 템플릿에 포함되지 않는다 — 생성하지 마라. (CI 워크플로우 `build.yml`은 포함 대상.)
 - Kover 필터의 `*__*` 제외는 Spring AOT 생성 클래스(`__BeanDefinitions`, `__TestContext*` 등)가 분모를 부풀려 커버리지를 왜곡(실측 0.25%까지 하락)하는 것을 막는 설정 — 임의 삭제 금지.
 - `minBound(30)`은 샘플 코드 실측 커버리지(30.8%) 기준 — 테스트 보강 시 상향할 것.
-- Mockito 기반 테스트(`@MockitoBean`/`@WebMvcTest` 등)는 런타임에 ByteBuddy로 동적 바이트코드를 생성하므로 GraalVM 네이티브 이미지에서 동작 불가하다. `nativeTest` 실행 시 AOT 컨텍스트 초기화 중 Mockito 클래스 초기화 실패(`NoClassDefFoundError`)로 `ApplicationContext` 로드가 깨진다. 따라서 `MemoControllerTest`에는 `@DisabledInNativeImage`가 반드시 부여돼 있어야 하며(JVM `test` 태스크에서는 계속 실행되어 커버리지에 영향 없음), 이 어노테이션을 임의 제거하지 마라. 이후 추가되는 Mockito/목 기반 테스트도 동일하게 처리할 것.
+- **[네이티브 이미지에서 스킵되는 테스트 — canonical 설명]** 아래 테스트들은 네이티브 이미지의 근본적 제약으로 동작 불가하므로 `@DisabledInNativeImage`가 필수다. JVM `test` 태스크에서는 계속 실행되므로 커버리지에 영향이 없으며, 이 어노테이션을 임의 제거하지 마라. 이후 추가되는 테스트도 아래 성격에 해당하면 동일하게 처리할 것.
+  - **Mockito 기반 테스트**(`@MockitoBean`/`@WebMvcTest` 등): 런타임에 ByteBuddy로 동적 바이트코드를 생성하므로 GraalVM 네이티브 이미지에서 동작 불가하다. `nativeTest` 실행 시 AOT 컨텍스트 초기화 중 Mockito 클래스 초기화 실패(`NoClassDefFoundError`)로 `ApplicationContext` 로드가 깨진다. (해당 예: `MemoControllerTest`. 이후 추가되는 Mockito/mock 기반 테스트도 동일.)
+  - **ArchUnit 기반 테스트**: 클래스패스의 `.class` 바이트코드를 런타임에 읽어 구조 규칙을 분석하는데, 네이티브 이미지에는 `.class` 파일 자체가 존재하지 않아 동작 불가하다. 또한 ArchUnit 전용 엔진(`@AnalyzeClasses`/`@ArchTest`)은 Jupiter 조건부 실행을 평가하지 않으므로, 일반 `@Test` + core API 방식으로 작성해야 `@DisabledInNativeImage`가 적용된다. (해당 예: `ArchitectureTest`.)
+  - **Konsist 기반 테스트**: 프로젝트의 코틀린 **소스 파일**을 직접 파싱하고 리플렉션에 의존하는데, 네이티브 이미지 실행 환경에는 소스 트리가 없어 동작 불가하다. (해당 예: `KonsistTest`.)
 - `gradle/verification-metadata.xml`은 로컬에서 완전해 보여도 CI cold cache에서만 누락이 드러날 수 있다. `--write-verification-metadata`는 실행 시 실제 해석된 아티팩트만 기록하므로, detached configuration의 `.pom`(예: `hibernate-platform`)이 로컬에서 캐시로만 충족되면 메타데이터에서 빠진다. 생성 후 §7의 grep 확인 절차를 반드시 거치고, CI에서 pom 검증 실패가 나면 검증을 끄지 말고 공식 sha256으로 항목을 보강할 것(§7·§12 참고).
