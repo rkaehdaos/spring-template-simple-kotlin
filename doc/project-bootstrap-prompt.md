@@ -583,7 +583,7 @@ jobs:
 ./gradlew --write-verification-metadata sha256 clean build koverXmlReport
 ```
 
-⚠️ **`--write-verification-metadata`는 그 실행에서 실제로 해석된 아티팩트만 기록한다.**
+⚠️ **[hibernate-platform `.pom` 검증 누락 — canonical 설명]** `--write-verification-metadata`는 그 실행에서 실제로 해석된 아티팩트만 기록한다.
 detached configuration에서 끌어오는 일부 `.pom`(대표적으로 `org.hibernate.orm:hibernate-platform`의
 pom)은 로컬 Gradle 캐시 상태에 따라 해석이 생략되어 메타데이터에서 빠질 수 있다. 이 경우
 로컬(warm cache)에서는 빌드가 통과하지만 CI(cold cache)에서만
@@ -1146,10 +1146,9 @@ git commit -m "🎉 release(config): initialize {{PROJECT_NAME}} 프로젝트"
 수정은 절대 하지 마라.** 대부분의 실패 원인은 placeholder 미치환 또는 오타다.
 
 **CI에서만 `DependencyVerificationException: One artifact failed verification: ...pom` 발생 시**:
-코드 문제가 아니라 검증 메타데이터 누락이다(§7 참고 — 로컬 warm cache에서는 해당 `.pom`이
-해석되지 않아 메타데이터에 기록되지 않았을 수 있다). **`verify-metadata`를 끄거나
-`verification-metadata.xml`을 삭제하는 방향으로 "해결"하지 마라.** 올바른 대처는 Maven Central
-공식 sha256을 대조한 뒤 누락된 `.pom` artifact 항목을 해당 component 블록에 수동 추가하는 것이다.
+코드 문제가 아니라 검증 메타데이터 누락이다. **`verify-metadata`를 끄거나
+`verification-metadata.xml`을 삭제하는 방향으로 "해결"하지 마라.** §7의 canonical 절차(공식
+sha256 대조 후 누락된 `.pom` artifact 항목을 해당 component 블록에 수동 추가)를 따를 것.
 
 ## 13. 주의사항 부록
 
@@ -1163,4 +1162,4 @@ git commit -m "🎉 release(config): initialize {{PROJECT_NAME}} 프로젝트"
   - **Mockito 기반 테스트**(`@MockitoBean`/`@WebMvcTest` 등): 런타임에 ByteBuddy로 동적 바이트코드를 생성하므로 GraalVM 네이티브 이미지에서 동작 불가하다. `nativeTest` 실행 시 AOT 컨텍스트 초기화 중 Mockito 클래스 초기화 실패(`NoClassDefFoundError`)로 `ApplicationContext` 로드가 깨진다. (해당 예: `MemoControllerTest`. 이후 추가되는 Mockito/mock 기반 테스트도 동일.)
   - **ArchUnit 기반 테스트**: 클래스패스의 `.class` 바이트코드를 런타임에 읽어 구조 규칙을 분석하는데, 네이티브 이미지에는 `.class` 파일 자체가 존재하지 않아 동작 불가하다. 또한 ArchUnit 전용 엔진(`@AnalyzeClasses`/`@ArchTest`)은 Jupiter 조건부 실행을 평가하지 않으므로, 일반 `@Test` + core API 방식으로 작성해야 `@DisabledInNativeImage`가 적용된다. (해당 예: `ArchitectureTest`.)
   - **Konsist 기반 테스트**: 프로젝트의 코틀린 **소스 파일**을 직접 파싱하고 리플렉션에 의존하는데, 네이티브 이미지 실행 환경에는 소스 트리가 없어 동작 불가하다. (해당 예: `KonsistTest`.)
-- `gradle/verification-metadata.xml`은 로컬에서 완전해 보여도 CI cold cache에서만 누락이 드러날 수 있다. `--write-verification-metadata`는 실행 시 실제 해석된 아티팩트만 기록하므로, detached configuration의 `.pom`(예: `hibernate-platform`)이 로컬에서 캐시로만 충족되면 메타데이터에서 빠진다. 생성 후 §7의 grep 확인 절차를 반드시 거치고, CI에서 pom 검증 실패가 나면 검증을 끄지 말고 공식 sha256으로 항목을 보강할 것(§7·§12 참고).
+- `gradle/verification-metadata.xml`은 로컬에서 완전해 보여도 CI cold cache에서만 누락이 드러날 수 있다(detached configuration의 `.pom`, 예: `hibernate-platform`). 메타데이터 생성 후 반드시 §7 canonical 절차의 grep 확인을 거칠 것 — 원인·대처 상세는 §7 참고.
