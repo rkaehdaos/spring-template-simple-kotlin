@@ -583,6 +583,35 @@ jobs:
 ./gradlew --write-verification-metadata sha256 clean build koverXmlReport
 ```
 
+⚠️ **[hibernate-platform `.pom` 검증 누락 — canonical 설명]** `--write-verification-metadata`는 그 실행에서 실제로 해석된 아티팩트만 기록한다.
+detached configuration에서 끌어오는 일부 `.pom`(대표적으로 `org.hibernate.orm:hibernate-platform`의
+pom)은 로컬 Gradle 캐시 상태에 따라 해석이 생략되어 메타데이터에서 빠질 수 있다. 이 경우
+로컬(warm cache)에서는 빌드가 통과하지만 CI(cold cache)에서만
+`DependencyVerificationException: One artifact failed verification: hibernate-platform-<버전>.pom`
+으로 실패한다. 따라서 생성 직후 **`.module`뿐 아니라 `.pom` 항목까지 존재하는지** 반드시 확인한다:
+
+```bash
+grep "hibernate-platform-<버전>.pom" gradle/verification-metadata.xml   # 예: 7.4.3.Final
+```
+
+항목이 없으면 Maven Central의 공식 sha256과 직접 계산값을 대조한 뒤 해당 component 블록에
+`<artifact>` 항목을 수동으로 추가한다:
+
+```bash
+V=7.4.3.Final
+BASE=https://repo.maven.apache.org/maven2/org/hibernate/orm/hibernate-platform/$V/hibernate-platform-$V.pom
+curl -s "$BASE" | shasum -a 256          # 계산값
+curl -s "$BASE.sha256"                    # Maven Central 공식 게시값 — 위와 일치해야 함
+```
+
+`verification-metadata.xml`의 `hibernate-platform` component 블록에 아래처럼 추가(`.module` 항목 형식 참고):
+
+```xml
+<artifact name="hibernate-platform-7.4.3.Final.pom">
+   <sha256 value="61c0faadd73127c2d80381b86d2426625429490651f4f8b05fbabc5e116ff27f" origin="Maven Central published checksum"/>
+</artifact>
+```
+
 ## 8. Step 5 — 메인 소스 코드
 
 아래에서 `{{BASE_PACKAGE}}` = `{{GROUP}}.{{PACKAGE_SEGMENT}}` (예: `dev.haja.demoservice`).
@@ -774,6 +803,7 @@ package {{BASE_PACKAGE}}.controller
 import {{BASE_PACKAGE}}.service.MemoNotFoundException
 import {{BASE_PACKAGE}}.service.MemoService
 import org.junit.jupiter.api.Test
+import org.junit.jupiter.api.condition.DisabledInNativeImage
 import org.mockito.BDDMockito.given
 import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.boot.webmvc.test.autoconfigure.WebMvcTest
@@ -783,6 +813,7 @@ import org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get
 import org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath
 import org.springframework.test.web.servlet.result.MockMvcResultMatchers.status
 
+@DisabledInNativeImage // Mockito(@MockitoBean)는 런타임 바이트코드 생성이 필요해 네이티브 이미지에서 동작 불가
 @WebMvcTest(MemoController::class)
 class MemoControllerTest @Autowired constructor(
     private val mockMvc: MockMvc,
@@ -1068,6 +1099,7 @@ mise install              # oracle-graalvm-25.0.3 설치 (mise.toml)
   - Jackson 3: `tools.jackson.module:jackson-module-kotlin` (`com.fasterxml` 아님)
 - 의존성 버전은 반드시 `gradle/libs.versions.toml` 버전 카탈로그로 관리
 - `build.gradle.kts`의 GraalVM `buildArgs`와 주석은 네이티브 빌드 실패 회피용 — 임의 삭제 금지
+- Mockito 기반 테스트(`@MockitoBean`/`@WebMvcTest` 등)는 런타임 바이트코드 생성이 필요해 네이티브 이미지(`nativeTest`)에서 동작 불가 → `@DisabledInNativeImage` 필수 (ArchUnit/Konsist 테스트도 동일)
 - 샘플 `Memo` 도메인 삭제 시 KonsistTest 규칙도 함께 정리할 것 (Konsist `assertTrue`는 빈 리스트에서 예외 발생)
 - `mise.toml`, `HELP.md`는 `.gitignore` 대상 (커밋되지 않는 것이 정상)
 ```
@@ -1104,9 +1136,19 @@ git commit -m "🎉 release(config): initialize {{PROJECT_NAME}} 프로젝트"
    ```
    확인 후 bootRun 종료.
 6. (선택, 장시간) `./gradlew nativeCompile`
+7. (선택, 장시간) `./gradlew nativeTest` → **BUILD SUCCESSFUL**. 단, 네이티브 이미지에서는
+   `contextLoads`(`{{CLASS_PREFIX}}ApplicationTests`) 1개만 실행/통과하고
+   `MemoControllerTest`·`ArchitectureTest`·`KonsistTest`는 모두 `@DisabledInNativeImage`로
+   **스킵되는 것이 정상**이다. 스킵을 실패로 오인해 어노테이션을 제거하지 마라
+   (각 테스트가 네이티브 이미지에서 동작 불가한 사유는 §13 부록 참고).
 
 빌드 실패 시: 에러를 읽고 수정하되, **0장의 규칙(최신 명칭 교정 금지)을 위반하는 방향의
 수정은 절대 하지 마라.** 대부분의 실패 원인은 placeholder 미치환 또는 오타다.
+
+**CI에서만 `DependencyVerificationException: One artifact failed verification: ...pom` 발생 시**:
+코드 문제가 아니라 검증 메타데이터 누락이다. **`verify-metadata`를 끄거나
+`verification-metadata.xml`을 삭제하는 방향으로 "해결"하지 마라.** §7의 canonical 절차(공식
+sha256 대조 후 누락된 `.pom` artifact 항목을 해당 component 블록에 수동 추가)를 따를 것.
 
 ## 13. 주의사항 부록
 
@@ -1116,3 +1158,8 @@ git commit -m "🎉 release(config): initialize {{PROJECT_NAME}} 프로젝트"
 - 이슈 템플릿은 이 템플릿에 포함되지 않는다 — 생성하지 마라. (CI 워크플로우 `build.yml`은 포함 대상.)
 - Kover 필터의 `*__*` 제외는 Spring AOT 생성 클래스(`__BeanDefinitions`, `__TestContext*` 등)가 분모를 부풀려 커버리지를 왜곡(실측 0.25%까지 하락)하는 것을 막는 설정 — 임의 삭제 금지.
 - `minBound(30)`은 샘플 코드 실측 커버리지(30.8%) 기준 — 테스트 보강 시 상향할 것.
+- **[네이티브 이미지에서 스킵되는 테스트 — canonical 설명]** 아래 테스트들은 네이티브 이미지의 근본적 제약으로 동작 불가하므로 `@DisabledInNativeImage`가 필수다. JVM `test` 태스크에서는 계속 실행되므로 커버리지에 영향이 없으며, 이 어노테이션을 임의 제거하지 마라. 이후 추가되는 테스트도 아래 성격에 해당하면 동일하게 처리할 것.
+  - **Mockito 기반 테스트**(`@MockitoBean`/`@WebMvcTest` 등): 런타임에 ByteBuddy로 동적 바이트코드를 생성하므로 GraalVM 네이티브 이미지에서 동작 불가하다. `nativeTest` 실행 시 AOT 컨텍스트 초기화 중 Mockito 클래스 초기화 실패(`NoClassDefFoundError`)로 `ApplicationContext` 로드가 깨진다. (해당 예: `MemoControllerTest`. 이후 추가되는 Mockito/mock 기반 테스트도 동일.)
+  - **ArchUnit 기반 테스트**: 클래스패스의 `.class` 바이트코드를 런타임에 읽어 구조 규칙을 분석하는데, 네이티브 이미지에는 `.class` 파일 자체가 존재하지 않아 동작 불가하다. 또한 ArchUnit 전용 엔진(`@AnalyzeClasses`/`@ArchTest`)은 Jupiter 조건부 실행을 평가하지 않으므로, 일반 `@Test` + core API 방식으로 작성해야 `@DisabledInNativeImage`가 적용된다. (해당 예: `ArchitectureTest`.)
+  - **Konsist 기반 테스트**: 프로젝트의 코틀린 **소스 파일**을 직접 파싱하고 리플렉션에 의존하는데, 네이티브 이미지 실행 환경에는 소스 트리가 없어 동작 불가하다. (해당 예: `KonsistTest`.)
+- `gradle/verification-metadata.xml`은 로컬에서 완전해 보여도 CI cold cache에서만 누락이 드러날 수 있다(detached configuration의 `.pom`, 예: `hibernate-platform`). 메타데이터 생성 후 반드시 §7 canonical 절차의 grep 확인을 거칠 것 — 원인·대처 상세는 §7 참고.
