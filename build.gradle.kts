@@ -3,7 +3,6 @@ plugins {
     alias(libs.plugins.kotlin.spring)
     alias(libs.plugins.spring.boot)
     alias(libs.plugins.spring.dependency.management)
-    alias(libs.plugins.hibernate.orm)
     alias(libs.plugins.graalvm.native)
     alias(libs.plugins.kotlin.jpa)
     alias(libs.plugins.kover)

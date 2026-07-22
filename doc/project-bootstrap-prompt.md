@@ -50,7 +50,7 @@
 | 프레임워크 | Spring Boot 4.1.0 + spring-dependency-management 1.1.7 |
 | 빌드 | Gradle 9.6.1 (Kotlin DSL, 버전 카탈로그) |
 | JDK | Oracle GraalVM 25.0.3 (mise로 관리) |
-| DB | H2 + Spring Data JPA (Hibernate ORM plugin 7.4.4.Final) |
+| DB | H2 + Spring Data JPA (Hibernate ORM — Spring Boot BOM 관리, 현재 7.4.1.Final) |
 | 네이티브 | GraalVM Native Build Tools 1.1.4 |
 | 테스트 | JUnit5, ArchUnit 1.4.2, Konsist 0.17.3, Kotest 6.2.3 |
 | 정적분석 | PMD 7.26.0 (커스텀 룰셋) + SonarCloud (org.sonarqube 7.3.1.8318) |
@@ -124,7 +124,6 @@ plugins {
     alias(libs.plugins.kotlin.spring)
     alias(libs.plugins.spring.boot)
     alias(libs.plugins.spring.dependency.management)
-    alias(libs.plugins.hibernate.orm)
     alias(libs.plugins.graalvm.native)
     alias(libs.plugins.kotlin.jpa)
     alias(libs.plugins.kover)
@@ -280,7 +279,6 @@ graalvmNative {
 kotlin = "2.4.10"
 spring-boot = "4.1.0"
 spring-dependency-management = "1.1.7"
-hibernate = "7.4.4.Final"
 graalvm-buildtools = "1.1.4"
 archunit = "1.4.2"
 konsist = "0.17.3"
@@ -315,7 +313,6 @@ kotlin-spring = { id = "org.jetbrains.kotlin.plugin.spring", version.ref = "kotl
 kotlin-jpa = { id = "org.jetbrains.kotlin.plugin.jpa", version.ref = "kotlin" }
 spring-boot = { id = "org.springframework.boot", version.ref = "spring-boot" }
 spring-dependency-management = { id = "io.spring.dependency-management", version.ref = "spring-dependency-management" }
-hibernate-orm = { id = "org.hibernate.orm", version.ref = "hibernate" }
 graalvm-native = { id = "org.graalvm.buildtools.native", version.ref = "graalvm-buildtools" }
 kover = { id = "org.jetbrains.kotlinx.kover", version.ref = "kover" }
 sonarqube = { id = "org.sonarqube", version.ref = "sonarqube" }
@@ -1042,31 +1039,32 @@ IDE 전용 태스크)이 **프로젝트의 Kotlin 버전과 무관하게 인텔�
 
 ⚠️ **`--refresh-dependencies`로 생성했더라도 생성 직후 누락 여부를 검증한다.** 위 flag가
 대부분의 warm cache 누락을 예방하지만, detached configuration에서 끌어오는 일부 `.pom`(대표적으로
-`org.hibernate.orm:hibernate-platform`의 pom)은 여전히 해석이 생략돼 빠질 수 있다. 이 경우
+`org.hibernate.orm:hibernate-platform`의 pom — hibernate-core가 platform 정렬용으로 끌어오는
+BOM이라 Spring Boot BOM 관리만으로도 나타난다)은 여전히 해석이 생략돼 빠질 수 있다. 이 경우
 로컬(warm cache)에서는 빌드가 통과하지만 CI(cold cache)에서만
 `DependencyVerificationException: One artifact failed verification: hibernate-platform-<버전>.pom`
 으로 실패한다. 따라서 생성 직후 **`.module`뿐 아니라 `.pom` 항목까지 존재하는지** 반드시 확인한다:
 
 ```bash
-grep "hibernate-platform-<버전>.pom" gradle/verification-metadata.xml   # 예: 7.4.4.Final
+grep "hibernate-platform-<버전>.pom" gradle/verification-metadata.xml   # 예: 7.4.1.Final
 ```
 
 항목이 없으면(= flag로도 못 잡은 잔여 누락의 fallback) Maven Central의 공식 sha256과 직접
 계산값을 대조한 뒤 해당 component 블록에 `<artifact>` 항목을 수동으로 추가한다:
 
 ```bash
-V=7.4.4.Final
+V=7.4.1.Final
 BASE=https://repo.maven.apache.org/maven2/org/hibernate/orm/hibernate-platform/$V/hibernate-platform-$V.pom
 curl -s "$BASE" | shasum -a 256          # 계산값
 curl -s "$BASE.sha256"                    # Maven Central 공식 게시값 — 위와 일치해야 함
 ```
 
 `verification-metadata.xml`의 `hibernate-platform` component 블록에 아래처럼 추가한다(`.module` 항목 형식 참고).
-아래 sha256은 7.4.4.Final 기준 **예시값**이다 — 반드시 위에서 직접 대조한 값을 사용하라:
+아래 sha256은 7.4.1.Final 기준 **예시값**이다 — 반드시 위에서 직접 대조한 값을 사용하라:
 
 ```xml
-<artifact name="hibernate-platform-7.4.4.Final.pom">
-   <sha256 value="95242e9771477c798df25c126276787ef585e732d8b9612f78792fd4fe32a197" origin="Maven Central published checksum"/>
+<artifact name="hibernate-platform-7.4.1.Final.pom">
+   <sha256 value="ba85ed562203cf69f73349bd5ea533e10e5f8cbe8a2b96f3473c2a75f5b2f232" origin="Maven Central published checksum"/>
 </artifact>
 ```
 
