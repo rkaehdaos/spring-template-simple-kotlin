@@ -18,7 +18,7 @@ description = "spring-template-simple-kotlin"
 // PMD: Java 소스 정적분석. 현재 Kotlin 전용이라 pmdMain은 NO-SOURCE로 스킵되며,
 // 향후 Java 소스가 추가되면 자동으로 룰이 적용된다.
 pmd {
-    toolVersion = libs.versions.pmd.get()           // Gradle 9.6.1 공식 지원 상한
+    toolVersion = libs.versions.pmd.get()           // 버전 카탈로그로 고정 — Gradle 내장 기본값 대신 최신 PMD 사용
     ruleSetFiles = files(".github/pmd/ruleset.xml")
     ruleSets = listOf()                             // 기본 룰셋(errorprone) 비활성화 명시
     sourceSets = listOf(project.sourceSets["main"]) // test/aot/aotTest 제외 — main만 check에 연결

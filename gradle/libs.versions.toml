@@ -1,14 +1,14 @@
 [versions]
-kotlin = "2.4.0"
+kotlin = "2.4.10"
 spring-boot = "4.1.0"
 spring-dependency-management = "1.1.7"
-hibernate = "7.4.3.Final"
+hibernate = "7.4.4.Final"
 graalvm-buildtools = "1.1.4"
 archunit = "1.4.2"
 konsist = "0.17.3"
-kotest = "6.2.2"
-pmd = "7.24.0"
-kover = "0.9.8"
+kotest = "6.2.3"
+pmd = "7.26.0"
+kover = "0.9.9"
 sonarqube = "7.3.1.8318"
 
 [libraries]
