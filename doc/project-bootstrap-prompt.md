@@ -11,7 +11,7 @@
 
 ## 0. ⚠️ 가장 중요한 규칙
 
-이 프로젝트는 **Spring Boot 4.1.0 / Kotlin 2.4.0 / Gradle 9.6.1 / JDK 25** 기반이며,
+이 프로젝트는 **Spring Boot 4.1.0 / Kotlin 2.4.10 / Gradle 9.6.1 / JDK 25** 기반이며,
 당신의 학습 데이터보다 최신일 수 있다. 아래 파일 내용에는 당신이 "틀렸다"고 느낄 수 있는
 최신 명칭이 포함되어 있으나 **전부 올바른 것**이다. 절대 다음과 같이 "교정"하지 마라:
 
@@ -46,22 +46,23 @@
 
 | 항목 | 값 |
 |---|---|
-| 언어 | Kotlin 2.4.0 (JVM toolchain 25) |
+| 언어 | Kotlin 2.4.10 (JVM toolchain 25) |
 | 프레임워크 | Spring Boot 4.1.0 + spring-dependency-management 1.1.7 |
 | 빌드 | Gradle 9.6.1 (Kotlin DSL, 버전 카탈로그) |
 | JDK | Oracle GraalVM 25.0.3 (mise로 관리) |
-| DB | H2 + Spring Data JPA (Hibernate ORM plugin 7.4.3.Final) |
+| DB | H2 + Spring Data JPA (Hibernate ORM — Spring Boot BOM 관리, 현재 7.4.1.Final) |
 | 네이티브 | GraalVM Native Build Tools 1.1.4 |
-| 테스트 | JUnit5, ArchUnit 1.4.2, Konsist 0.17.3, Kotest 6.2.2 |
-| 정적분석 | PMD 7.24.0 (커스텀 룰셋) + SonarCloud (org.sonarqube 7.3.1.8318) |
-| 커버리지 | Kover 0.9.8 (라인 최소 30% 강제) |
+| 테스트 | JUnit5, ArchUnit 1.4.2, Konsist 0.17.3, Kotest 6.2.3 |
+| 정적분석 | PMD 7.26.0 (커스텀 룰셋) + SonarCloud (org.sonarqube 7.3.1.8318) |
+| 커버리지 | Kover 0.9.9 (라인 최소 30% 강제) |
 | CI | GitHub Actions (`.github/workflows/build.yml`) |
 
 ## 3. 최종 디렉토리 구조
 
 ```
 {{PROJECT_NAME}}/
-├── CLAUDE.md
+├── AGENTS.md                      # 공통 에이전트 규칙 단일 소스(source of truth)
+├── CLAUDE.md                      # 얇은 포인터 — @AGENTS.md 임포트 + Claude Code 전용 섹션
 ├── mise.toml                      # .gitignore 대상 (커밋 안 됨 — 정상)
 ├── settings.gradle.kts
 ├── build.gradle.kts
@@ -74,6 +75,7 @@
 │   └── workflows/build.yml
 ├── gradle/
 │   ├── libs.versions.toml
+│   ├── verification-metadata.xml  # Step 7에서 명령으로 생성 + 수동 보강
 │   └── wrapper/                   # Step 3에서 명령으로 생성
 ├── gradlew / gradlew.bat          # Step 3에서 명령으로 생성
 └── src/
@@ -93,6 +95,7 @@
 
 `{{GROUP 경로}}` = GROUP의 `.`을 `/`로 바꾼 것 (예: `dev/haja`).
 `Memo`는 **샘플 도메인 이름**이며 프로젝트 이름이 아니다 — 치환하지 마라.
+현재(빈) 디렉토리가 곧 프로젝트 루트다 — `{{PROJECT_NAME}}/` 하위 디렉토리를 새로 만들지 마라 (트리 최상위 이름은 표기용).
 
 ## 4. Step 1 — mise.toml 및 JDK 설치
 
@@ -121,7 +124,6 @@ plugins {
     alias(libs.plugins.kotlin.spring)
     alias(libs.plugins.spring.boot)
     alias(libs.plugins.spring.dependency.management)
-    alias(libs.plugins.hibernate.orm)
     alias(libs.plugins.graalvm.native)
     alias(libs.plugins.kotlin.jpa)
     alias(libs.plugins.kover)
@@ -136,7 +138,7 @@ description = "{{PROJECT_NAME}}"
 // PMD: Java 소스 정적분석. 현재 Kotlin 전용이라 pmdMain은 NO-SOURCE로 스킵되며,
 // 향후 Java 소스가 추가되면 자동으로 룰이 적용된다.
 pmd {
-    toolVersion = libs.versions.pmd.get()           // Gradle 9.6.1 공식 지원 상한
+    toolVersion = libs.versions.pmd.get()           // 버전 카탈로그로 고정 — Gradle 내장 기본값 대신 최신 PMD 사용
     ruleSetFiles = files(".github/pmd/ruleset.xml")
     ruleSets = listOf()                             // 기본 룰셋(errorprone) 비활성화 명시
     sourceSets = listOf(project.sourceSets["main"]) // test/aot/aotTest 제외 — main만 check에 연결
@@ -274,16 +276,15 @@ graalvmNative {
 
 ```toml
 [versions]
-kotlin = "2.4.0"
+kotlin = "2.4.10"
 spring-boot = "4.1.0"
 spring-dependency-management = "1.1.7"
-hibernate = "7.4.3.Final"
 graalvm-buildtools = "1.1.4"
 archunit = "1.4.2"
 konsist = "0.17.3"
-kotest = "6.2.2"
-pmd = "7.24.0"
-kover = "0.9.8"
+kotest = "6.2.3"
+pmd = "7.26.0"
+kover = "0.9.9"
 sonarqube = "7.3.1.8318"
 
 [libraries]
@@ -312,7 +313,6 @@ kotlin-spring = { id = "org.jetbrains.kotlin.plugin.spring", version.ref = "kotl
 kotlin-jpa = { id = "org.jetbrains.kotlin.plugin.jpa", version.ref = "kotlin" }
 spring-boot = { id = "org.springframework.boot", version.ref = "spring-boot" }
 spring-dependency-management = { id = "io.spring.dependency-management", version.ref = "spring-dependency-management" }
-hibernate-orm = { id = "org.hibernate.orm", version.ref = "hibernate" }
 graalvm-native = { id = "org.graalvm.buildtools.native", version.ref = "graalvm-buildtools" }
 kover = { id = "org.jetbrains.kotlinx.kover", version.ref = "kover" }
 sonarqube = { id = "org.sonarqube", version.ref = "sonarqube" }
@@ -575,41 +575,6 @@ jobs:
           SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: ./gradlew sonar
-```
-
-의존성 검증 메타데이터 생성(Sonar S8569/S6474 대응 — 생성된 `gradle/verification-metadata.xml`을 커밋):
-
-```bash
-./gradlew --write-verification-metadata sha256 clean build koverXmlReport
-```
-
-⚠️ **[hibernate-platform `.pom` 검증 누락 — canonical 설명]** `--write-verification-metadata`는 그 실행에서 실제로 해석된 아티팩트만 기록한다.
-detached configuration에서 끌어오는 일부 `.pom`(대표적으로 `org.hibernate.orm:hibernate-platform`의
-pom)은 로컬 Gradle 캐시 상태에 따라 해석이 생략되어 메타데이터에서 빠질 수 있다. 이 경우
-로컬(warm cache)에서는 빌드가 통과하지만 CI(cold cache)에서만
-`DependencyVerificationException: One artifact failed verification: hibernate-platform-<버전>.pom`
-으로 실패한다. 따라서 생성 직후 **`.module`뿐 아니라 `.pom` 항목까지 존재하는지** 반드시 확인한다:
-
-```bash
-grep "hibernate-platform-<버전>.pom" gradle/verification-metadata.xml   # 예: 7.4.3.Final
-```
-
-항목이 없으면 Maven Central의 공식 sha256과 직접 계산값을 대조한 뒤 해당 component 블록에
-`<artifact>` 항목을 수동으로 추가한다:
-
-```bash
-V=7.4.3.Final
-BASE=https://repo.maven.apache.org/maven2/org/hibernate/orm/hibernate-platform/$V/hibernate-platform-$V.pom
-curl -s "$BASE" | shasum -a 256          # 계산값
-curl -s "$BASE.sha256"                    # Maven Central 공식 게시값 — 위와 일치해야 함
-```
-
-`verification-metadata.xml`의 `hibernate-platform` component 블록에 아래처럼 추가(`.module` 항목 형식 참고):
-
-```xml
-<artifact name="hibernate-platform-7.4.3.Final.pom">
-   <sha256 value="61c0faadd73127c2d80381b86d2426625429490651f4f8b05fbabc5e116ff27f" origin="Maven Central published checksum"/>
-</artifact>
 ```
 
 ## 8. Step 5 — 메인 소스 코드
@@ -1032,24 +997,127 @@ class KonsistTest {
 }
 ```
 
-## 10. Step 7 — CLAUDE.md
+## 10. Step 7 — 의존성 검증 메타데이터
 
-프로젝트 루트에 `CLAUDE.md` 생성:
+의존성 검증 메타데이터 생성(Sonar S8569/S6474 대응 — 생성된 `gradle/verification-metadata.xml`을 커밋):
 
-```markdown
-# CLAUDE.md
+```bash
+./gradlew --write-verification-metadata sha256 --refresh-dependencies clean build koverXmlReport
+```
 
-이 저장소에서 작업할 때 반드시 지켜야 할 규칙과 컨텍스트.
+⚠️ **`--refresh-dependencies`를 절대 생략하지 마라.** `--write-verification-metadata`는 그 실행에서
+실제로 해석된 아티팩트만 기록하는데, 개발 머신의 `~/.gradle` 캐시는 다른 프로젝트가 이미 받아둔
+아티팩트 때문에 **최초 생성 시점부터 warm**일 수 있다. 그러면 Gradle이 캐시된 메타데이터를 다시
+해석하지 않아 일부 체크섬(특히 플러그인 `configuration 'classpath'`의 BOM `.module`/`.pom`,
+kotlin build-tools 메타데이터, detached configuration의 `.pom`)이 누락된다 → **로컬(warm cache)은
+통과하지만 cold cache인 CI에서만 `Dependency verification failed`로 실패**한다.
+`--refresh-dependencies`는 캐시된 메타데이터를 강제로 다시 해석해 이 누락을 근본 예방한다.
+
+⚠️ **생성 직후 반드시 `<trusted-artifacts>` 블록을 수동 추가한다 (인텔리제이 sync 실패 예방 — 필수).**
+`--write-verification-metadata`는 그 실행에서 해석된 아티팩트만 기록하는데, 인텔리제이 Gradle sync는
+터미널 빌드가 건드리지 않는 IDE 전용 아티팩트를 추가로 요청한다: (a) "Download sources" 동작이
+받는 `*-sources.jar`·`gradle-*-src.zip`, (b) `prepareKotlinBuildScriptModel`(`.kts` 편집기 지원용
+IDE 전용 태스크)이 **프로젝트의 Kotlin 버전과 무관하게 인텔리제이 Kotlin 플러그인 내장 버전**의
+`kotlin-reflect`(현재 `2.3.21`, `Gradle Central Plugin Repository`에서)를 요청. 이들은 체크섬이
+등록될 수 없어(`--rerun-tasks`로 강제 실행해도 CLI 경로에선 해석되지 않음) sync 전체가 실패하고
+`build.gradle.kts`가 통째로 오류 표시된다. 따라서 생성된 `gradle/verification-metadata.xml`의
+`<configuration>` 안에 아래 블록을 삽입한다:
+
+```xml
+<trusted-artifacts>
+   <trust file=".*-javadoc\.jar" regex="true"/>
+   <trust file=".*-sources\.jar" regex="true"/>
+   <trust file="gradle-[0-9.]+-src\.zip" regex="true"/>
+   <trust group="org.jetbrains.kotlin" name="kotlin-reflect" version="2.3.21" reason="IntelliJ Kotlin DSL 스크립트 모델(prepareKotlinBuildScriptModel) 전용 IDE 내장 버전 - 런타임 클래스패스에 포함되지 않음"/>
+</trusted-artifacts>
+```
+
+소스/문서 jar는 빌드 클래스패스에 오르지 않아 리스크가 낮다(Gradle 공식 문서 안내 패턴).
+`kotlin-reflect`는 IDE 내장 버전(`2.3.21`)만 좁게 신뢰하며 — 프로젝트가 실제 쓰는 버전(`2.4.10`)은
+그대로 체크섬 검증 대상으로 남는다. `2.3.21`은 작성 시점 인텔리제이 Kotlin 플러그인 기준이므로 IDE
+업데이트로 다른 버전이 되면 §13 트러블슈팅 절차대로 해당 버전의 `<trust>`를 추가한다.
+
+⚠️ **`--refresh-dependencies`로 생성했더라도 생성 직후 누락 여부를 검증한다.** 위 flag가
+대부분의 warm cache 누락을 예방하지만, detached configuration에서 끌어오는 일부 `.pom`(대표적으로
+`org.hibernate.orm:hibernate-platform`의 pom — hibernate-core가 platform 정렬용으로 끌어오는
+BOM이라 Spring Boot BOM 관리만으로도 나타난다)은 여전히 해석이 생략돼 빠질 수 있다. 이 경우
+로컬(warm cache)에서는 빌드가 통과하지만 CI(cold cache)에서만
+`DependencyVerificationException: One artifact failed verification: hibernate-platform-<버전>.pom`
+으로 실패한다. 따라서 생성 직후 **`.module`뿐 아니라 `.pom` 항목까지 존재하는지** 반드시 확인한다:
+
+```bash
+grep "hibernate-platform-<버전>.pom" gradle/verification-metadata.xml   # 예: 7.4.1.Final
+```
+
+항목이 없으면(= flag로도 못 잡은 잔여 누락의 fallback) Maven Central의 공식 sha256과 직접
+계산값을 대조한 뒤 해당 component 블록에 `<artifact>` 항목을 수동으로 추가한다:
+
+```bash
+V=7.4.1.Final
+BASE=https://repo.maven.apache.org/maven2/org/hibernate/orm/hibernate-platform/$V/hibernate-platform-$V.pom
+curl -s "$BASE" | shasum -a 256          # 계산값
+curl -s "$BASE.sha256"                    # Maven Central 공식 게시값 — 위와 일치해야 함
+```
+
+`verification-metadata.xml`의 `hibernate-platform` component 블록에 아래처럼 추가한다(`.module` 항목 형식 참고).
+아래 sha256은 7.4.1.Final 기준 **예시값**이다 — 반드시 위에서 직접 대조한 값을 사용하라:
+
+```xml
+<artifact name="hibernate-platform-7.4.1.Final.pom">
+   <sha256 value="ba85ed562203cf69f73349bd5ea533e10e5f8cbe8a2b96f3473c2a75f5b2f232" origin="Maven Central published checksum"/>
+</artifact>
+```
+
+⚠️ **이후 의존성을 업그레이드할 때(예: kover 0.9.8 → 0.9.9)도 이 파일을 함께 유지한다.**
+`libs.versions.toml`에서 버전만 올리면 새 아티팩트 체크섬이 등록되지 않아 검증이 실패한다.
+절차:
+
+1. **재생성**: 버전 카탈로그 수정 후 위와 동일한 명령을 재실행한다(`--refresh-dependencies` 필수):
+   ```bash
+   ./gradlew --write-verification-metadata sha256 --refresh-dependencies clean build koverXmlReport
+   ```
+   특히 **플러그인 업그레이드**는 플러그인 클래스패스(`configuration 'classpath'`)의 의존성
+   그래프를 바꿔 이전엔 불필요했던 BOM 메타데이터 해석을 새로 요구한다. flag 없이 warm cache에서
+   재생성하면 이 체크섬들이 누락돼 CI에서만 실패한다. (실측: kotlin 2.4.0 → 2.4.10 업그레이드에서
+   junit-bom 등 BOM `.module`/`.pom` 8건 + kotlin build-tools 2.4.0 메타데이터 4건이 누락돼
+   CI의 `Dependency verification failed for configuration 'classpath'`로 실패했음.)
+2. **stale 항목 수동 제거**: `--write-verification-metadata`는 **append-only**다 —
+   새 버전 체크섬은 추가하지만 구버전 `<component>` 블록은 지우지 않는다. 업그레이드한
+   의존성의 구버전 component 블록을 직접 삭제한다. (kover 0.9.8 → 0.9.9 실측: 구버전
+   component 4개 — `kover-features-jvm`·`kover-gradle-plugin`·`kover-jvm-agent`·
+   `org.jetbrains.kotlinx.kover.gradle.plugin` — 가 잔존했음.)
+3. **잔존 확인 함정 주의**: `grep '0.9.8'`처럼 버전 문자열을 그대로 grep하면 `.`이
+   정규식 와일드카드로 동작해 **sha256 hex 값에 우연히 매칭**된다(오탐). 반드시 고정
+   문자열로 확인한다:
+   ```bash
+   grep -Fc '0.9.8"' gradle/verification-metadata.xml   # 0 이어야 함 (닫는 따옴표까지 고정)
+   ```
+4. **`<trusted-artifacts>` 보존 확인**: 재생성 시 이 블록은 보존되지만(순서만 바뀔 수
+   있음), 커밋 전 `git diff`에서 유지 여부를 반드시 확인한다.
+5. **마무리**: `./gradlew clean build`로 검증 통과를 확인한 뒤 `libs.versions.toml`과
+   `gradle/verification-metadata.xml`을 함께 커밋한다.
+
+## 11. Step 8 — AGENTS.md 및 CLAUDE.md
+
+공통 에이전트 규칙은 **`AGENTS.md`가 단일 소스(source of truth)**이고, `CLAUDE.md`는 그것을
+임포트하는 얇은 포인터다. 두 파일을 모두 생성한다.
+
+### 11-1. `AGENTS.md` (프로젝트 루트)
+
+````markdown
+# AGENTS.md
+
+이 저장소에서 작업하는 AI 코딩 에이전트가 반드시 지켜야 할 규칙과 컨텍스트.
 
 ## 프로젝트 개요
 
-Spring Boot **4.1.0** + Kotlin **2.4.0** + JDK **25(GraalVM)** 기반 프로젝트.
+Spring Boot **4.1.0** + Kotlin **2.4.10** + JDK **25(GraalVM)** 기반 프로젝트.
 
 - 빌드: Gradle 9.6.1 (Kotlin DSL) + 버전 카탈로그 `gradle/libs.versions.toml`
 - DB: H2 (in-memory) + Spring Data JPA
 - 웹: Spring MVC (`spring-boot-starter-webmvc`)
 - 네이티브 이미지: GraalVM Native Build Tools 지원
-- 정적분석: PMD 7.24.0 (커스텀 룰셋 `.github/pmd/ruleset.xml`, 메서드 NCSS 30줄 제한, main 소스셋만)
+- 정적분석: PMD 7.26.0 (커스텀 룰셋 `.github/pmd/ruleset.xml`, 메서드 NCSS 30줄 제한, main 소스셋만)
 - 커버리지: Kover (라인 30% 미만이면 check 실패) + SonarCloud 연동 (`.github/workflows/build.yml`, `SONAR_TOKEN` secret 필요)
 - 샘플 도메인: `Memo` (최소 CRUD — 아키텍처 규칙 예시용)
 
@@ -1102,9 +1170,26 @@ mise install              # oracle-graalvm-25.0.3 설치 (mise.toml)
 - Mockito 기반 테스트(`@MockitoBean`/`@WebMvcTest` 등)는 런타임 바이트코드 생성이 필요해 네이티브 이미지(`nativeTest`)에서 동작 불가 → `@DisabledInNativeImage` 필수 (ArchUnit/Konsist 테스트도 동일)
 - 샘플 `Memo` 도메인 삭제 시 KonsistTest 규칙도 함께 정리할 것 (Konsist `assertTrue`는 빈 리스트에서 예외 발생)
 - `mise.toml`, `HELP.md`는 `.gitignore` 대상 (커밋되지 않는 것이 정상)
+- `gradle/verification-metadata.xml`의 `<trusted-artifacts>`는 인텔리제이 sync 전용 아티팩트(sources jar, IDE 내장 `kotlin-reflect`) 검증 실패 방지용 — 임의 삭제 금지. 인텔리제이에서만 `Dependency verification failed`가 나면 검증을 끄지 말고 실패 로그의 아티팩트를 `<trust>` 항목으로 좁게 추가할 것
+- 의존성 업그레이드 시 `./gradlew --write-verification-metadata sha256 --refresh-dependencies clean build koverXmlReport`로 검증 메타데이터를 재생성할 것. `--refresh-dependencies`가 없으면 웜 캐시에 이미 있는 아티팩트(특히 플러그인 classpath의 BOM `.module`/`.pom`, kotlin build-tools 메타데이터)를 다시 내려받지 않아 체크섬이 누락되고, 콜드 캐시인 CI의 `configuration 'classpath'` 검증에서만 `Dependency verification failed`로 실패한다(터미널 로컬 빌드는 통과). 이 명령은 append-only라 구버전 항목이 남으므로 stale `<component>`를 수동 제거하고, 잔존 확인은 정규식 오탐(`.`이 sha256 hex에 매칭)을 피해 `grep -Fc '<구버전>"'`(0이어야 함)으로 할 것. `<trusted-artifacts>` 블록은 보존 확인
+````
+
+### 11-2. `CLAUDE.md` (프로젝트 루트 — 얇은 포인터)
+
+```markdown
+# CLAUDE.md
+
+공통 에이전트 규칙은 AGENTS.md가 단일 소스(source of truth)다. 프로젝트 규칙 변경은 반드시 AGENTS.md에서 할 것.
+
+@AGENTS.md
+
+## Claude Code 전용
+
+현재 Claude Code 전용 워크플로우는 없다. Claude Code 고유 기능(자동 메모리, 경로 기반 규칙,
+claudeMdExcludes 등) 관련 지침이 생기면 이 섹션에 추가한다.
 ```
 
-## 11. Step 8 — git 초기화
+## 12. Step 9 — git 초기화
 
 ```bash
 git init -b main
@@ -1115,7 +1200,7 @@ git commit -m "🎉 release(config): initialize {{PROJECT_NAME}} 프로젝트"
 
 (`mise.toml`은 `.gitignore` 대상이라 커밋에 포함되지 않는다 — 정상.)
 
-## 12. 검증 (반드시 수행)
+## 13. 검증 (반드시 수행)
 
 1. `mise exec -- java -version` → GraalVM 25 확인
 2. `./gradlew build` → **BUILD SUCCESSFUL** + 테스트 16개 전체 통과
@@ -1127,30 +1212,53 @@ git commit -m "🎉 release(config): initialize {{PROJECT_NAME}} 프로젝트"
    수동 조치이며, 없으면 실패하는 것이 정상이다
 5. 스모크 테스트:
    ```bash
-   ./gradlew bootRun &   # 기동 대기: 아래 curl이 응답할 때까지 2초 간격 폴링 (최대 60초)
-   until curl -sf localhost:8080/api/memos > /dev/null; do sleep 2; done
+   ./gradlew bootRun & BOOT_PID=$!
+   # 기동 대기: 2초 간격 폴링, 최대 60초 (실패 시 무한 대기 금지)
+   for i in $(seq 1 30); do curl -sf localhost:8080/api/memos > /dev/null && break; sleep 2; done
    curl -s -X POST localhost:8080/api/memos -H 'Content-Type: application/json' \
         -d '{"title":"t","content":"c"}'          # 201 + JSON 응답
    curl -s localhost:8080/api/memos              # 목록에 1건
    curl -s -o /dev/null -w '%{http_code}' localhost:8080/api/memos/999   # 404
+   kill $BOOT_PID                # bootRun 종료
    ```
-   확인 후 bootRun 종료.
 6. (선택, 장시간) `./gradlew nativeCompile`
 7. (선택, 장시간) `./gradlew nativeTest` → **BUILD SUCCESSFUL**. 단, 네이티브 이미지에서는
    `contextLoads`(`{{CLASS_PREFIX}}ApplicationTests`) 1개만 실행/통과하고
-   `MemoControllerTest`·`ArchitectureTest`·`KonsistTest`는 모두 `@DisabledInNativeImage`로
-   **스킵되는 것이 정상**이다. 스킵을 실패로 오인해 어노테이션을 제거하지 마라
-   (각 테스트가 네이티브 이미지에서 동작 불가한 사유는 §13 부록 참고).
+   `MemoControllerTest`(Mockito)·`ArchitectureTest`·`KonsistTest`는 모두
+   `@DisabledInNativeImage`로 **스킵되는 것이 정상**이다. 스킵을 실패로 오인해
+   어노테이션을 제거하지 마라 — Mockito/ArchUnit/Konsist는 런타임 바이트코드
+   생성·`.class` 파싱에 의존해 네이티브 이미지에서 근본적으로 동작할 수 없다.
 
 빌드 실패 시: 에러를 읽고 수정하되, **0장의 규칙(최신 명칭 교정 금지)을 위반하는 방향의
 수정은 절대 하지 마라.** 대부분의 실패 원인은 placeholder 미치환 또는 오타다.
 
-**CI에서만 `DependencyVerificationException: One artifact failed verification: ...pom` 발생 시**:
-코드 문제가 아니라 검증 메타데이터 누락이다. **`verify-metadata`를 끄거나
-`verification-metadata.xml`을 삭제하는 방향으로 "해결"하지 마라.** §7의 canonical 절차(공식
-sha256 대조 후 누락된 `.pom` artifact 항목을 해당 component 블록에 수동 추가)를 따를 것.
+**CI에서만 `Dependency verification failed` 발생 시** (단일 `...pom` 실패든, 플러그인
+업그레이드 후 `configuration 'classpath'`의 다수 BOM `.module`/`.pom` 실패든):
+코드 문제가 아니라 검증 메타데이터 누락이다(§10 참고 — 로컬 warm cache에서 해당 아티팩트가
+해석되지 않아 기록되지 않았을 수 있다). **`verify-metadata`를 끄거나 `verification-metadata.xml`을
+삭제하는 방향으로 "해결"하지 마라.** 대처 순서:
+1. **재생성으로 해결(대부분 여기서 끝)**: §10의 `--refresh-dependencies` 포함 명령으로 재생성하면
+   warm cache가 건너뛴 아티팩트까지 강제 재해석돼 누락 체크섬이 채워진다.
+2. **그래도 특정 아티팩트가 안 잡히면(fallback)**: Maven Central 공식 sha256을 대조한 뒤 누락된
+   `<artifact>` 항목을 해당 component 블록에 수동 추가한다(§10의 hibernate-platform 절차 참고).
 
-## 13. 주의사항 부록
+**인텔리제이에서만 `Dependency verification failed`가 발생하고 터미널 빌드는 성공할 때**:
+`verification-metadata.xml`이 IDE 전용 아티팩트를 캡처하지 못하는 구조적 문제다(§10 참고).
+CLI로는 재현·사전 캡처가 불가능하다 — `./gradlew prepareKotlinBuildScriptModel
+--write-verification-metadata sha256 --rerun-tasks`로 강제 실행해도 IDE 내장 버전 아티팩트는
+해석되지 않는다. 실패 로그의 아티팩트를 보고 §10의 `<trusted-artifacts>`에 `<trust>`를 추가한다:
+`*-sources.jar`/`*-javadoc.jar`/`gradle-*-src.zip`이면 파일명 패턴, IDE 내장 버전(예: 다른 버전의
+`kotlin-reflect`)이면 `group`/`name`/`version`을 좁게 지정. **`verify-metadata`를 끄거나
+`verification-metadata.xml`을 삭제하지 마라**(CI 항목과 동일 원칙). 인텔리제이/Kotlin 플러그인
+업데이트로 내장 Kotlin 버전이 바뀌면 새 버전으로 재발할 수 있으며, 그때도 같은 방식으로 대응한다.
+
+**인텔리제이에서 `build.gradle.kts` 전체가 오류(빨간 줄)로 표시될 때 (Gradle sync 실패)**:
+Gradle JVM 설정이 `#JAVA_HOME`이면 macOS GUI 앱(Toolbox로 실행한 인텔리제이)은 셸 환경변수를
+상속하지 않아 mise의 `JAVA_HOME`을 해석하지 못하고 sync가 실패한다. Settings > Build Tools >
+Gradle 의 **Gradle JVM**을 등록된 GraalVM 25 SDK로 명시 지정하라(`.idea/`는 gitignore 대상이라
+템플릿에 포함되지 않는다). 그래도 실패하면 위의 의존성 검증 항목을 확인한다.
+
+## 14. 주의사항 부록
 
 - `Memo`, `MemoService`, `MemoController` 등은 **샘플 도메인**이며 프로젝트 이름이 아니다. 치환 금지.
 - Konsist 테스트는 샘플 코드 존재에 의존한다 (빈 리스트에서 `assertTrue` 예외). 샘플 삭제 시 해당 규칙도 함께 정리.
@@ -1158,8 +1266,5 @@ sha256 대조 후 누락된 `.pom` artifact 항목을 해당 component 블록에
 - 이슈 템플릿은 이 템플릿에 포함되지 않는다 — 생성하지 마라. (CI 워크플로우 `build.yml`은 포함 대상.)
 - Kover 필터의 `*__*` 제외는 Spring AOT 생성 클래스(`__BeanDefinitions`, `__TestContext*` 등)가 분모를 부풀려 커버리지를 왜곡(실측 0.25%까지 하락)하는 것을 막는 설정 — 임의 삭제 금지.
 - `minBound(30)`은 샘플 코드 실측 커버리지(30.8%) 기준 — 테스트 보강 시 상향할 것.
-- **[네이티브 이미지에서 스킵되는 테스트 — canonical 설명]** 아래 테스트들은 네이티브 이미지의 근본적 제약으로 동작 불가하므로 `@DisabledInNativeImage`가 필수다. JVM `test` 태스크에서는 계속 실행되므로 커버리지에 영향이 없으며, 이 어노테이션을 임의 제거하지 마라. 이후 추가되는 테스트도 아래 성격에 해당하면 동일하게 처리할 것.
-  - **Mockito 기반 테스트**(`@MockitoBean`/`@WebMvcTest` 등): 런타임에 ByteBuddy로 동적 바이트코드를 생성하므로 GraalVM 네이티브 이미지에서 동작 불가하다. `nativeTest` 실행 시 AOT 컨텍스트 초기화 중 Mockito 클래스 초기화 실패(`NoClassDefFoundError`)로 `ApplicationContext` 로드가 깨진다. (해당 예: `MemoControllerTest`. 이후 추가되는 Mockito/mock 기반 테스트도 동일.)
-  - **ArchUnit 기반 테스트**: 클래스패스의 `.class` 바이트코드를 런타임에 읽어 구조 규칙을 분석하는데, 네이티브 이미지에는 `.class` 파일 자체가 존재하지 않아 동작 불가하다. 또한 ArchUnit 전용 엔진(`@AnalyzeClasses`/`@ArchTest`)은 Jupiter 조건부 실행을 평가하지 않으므로, 일반 `@Test` + core API 방식으로 작성해야 `@DisabledInNativeImage`가 적용된다. (해당 예: `ArchitectureTest`.)
-  - **Konsist 기반 테스트**: 프로젝트의 코틀린 **소스 파일**을 직접 파싱하고 리플렉션에 의존하는데, 네이티브 이미지 실행 환경에는 소스 트리가 없어 동작 불가하다. (해당 예: `KonsistTest`.)
-- `gradle/verification-metadata.xml`은 로컬에서 완전해 보여도 CI cold cache에서만 누락이 드러날 수 있다(detached configuration의 `.pom`, 예: `hibernate-platform`). 메타데이터 생성 후 반드시 §7 canonical 절차의 grep 확인을 거칠 것 — 원인·대처 상세는 §7 참고.
+- Mockito 기반 테스트(`@MockitoBean`/`@WebMvcTest` 등)는 런타임 바이트코드 생성(ByteBuddy)이 필요해 GraalVM 네이티브 이미지에서 동작 불가 — `MemoControllerTest`의 `@DisabledInNativeImage`를 임의 제거하지 말고(JVM `test`에서는 계속 실행됨), 이후 추가되는 목 기반 테스트도 동일하게 처리할 것 (상세는 §13의 nativeTest 항목).
+- `gradle/verification-metadata.xml`은 로컬(warm cache)에서 완전해 보여도 CI cold cache에서만 누락이 드러날 수 있다. 근본 예방책은 재생성 시 항상 `--refresh-dependencies`를 붙이는 것이며, CI 검증 실패 시 검증을 끄지 말 것 — 상세 원리와 대처 절차는 §10·§13 참고.
