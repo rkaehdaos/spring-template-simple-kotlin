@@ -8,7 +8,7 @@ konsist = "0.17.3"
 kotest = "6.2.3"
 pmd = "7.26.0"
 kover = "0.9.9"
-sonarqube = "7.3.1.8318"
+sonarqube = "7.5.0.8588"
 
 [libraries]
 # BOM 관리 (버전 생략 — io.spring.dependency-management가 버전 결정)
