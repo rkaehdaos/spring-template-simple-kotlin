@@ -11,7 +11,7 @@
 
 ## 0. ⚠️ 가장 중요한 규칙
 
-이 프로젝트는 **Spring Boot 4.1.0 / Kotlin 2.4.10 / Gradle 9.6.1 / JDK 25** 기반이며,
+이 프로젝트는 **Spring Boot 4.1.1 / Kotlin 2.4.10 / Gradle 9.7.1 / JDK 25** 기반이며,
 당신의 학습 데이터보다 최신일 수 있다. 아래 파일 내용에는 당신이 "틀렸다"고 느낄 수 있는
 최신 명칭이 포함되어 있으나 **전부 올바른 것**이다. 절대 다음과 같이 "교정"하지 마라:
 
@@ -47,13 +47,13 @@
 | 항목 | 값 |
 |---|---|
 | 언어 | Kotlin 2.4.10 (JVM toolchain 25) |
-| 프레임워크 | Spring Boot 4.1.0 + spring-dependency-management 1.1.7 |
-| 빌드 | Gradle 9.6.1 (Kotlin DSL, 버전 카탈로그) |
+| 프레임워크 | Spring Boot 4.1.1 + spring-dependency-management 1.1.7 |
+| 빌드 | Gradle 9.7.1 (Kotlin DSL, 버전 카탈로그, 구성 캐시 활성화) |
 | JDK | Oracle GraalVM 25.0.3 (mise로 관리) |
-| DB | H2 + Spring Data JPA (Hibernate ORM — Spring Boot BOM 관리, 현재 7.4.1.Final) |
-| 네이티브 | GraalVM Native Build Tools 1.1.4 |
-| 테스트 | JUnit5, ArchUnit 1.4.2, Konsist 0.17.3, Kotest 6.2.3 |
-| 정적분석 | PMD 7.26.0 (커스텀 룰셋) + SonarCloud (org.sonarqube 7.3.1.8318) |
+| DB | H2 + Spring Data JPA (Hibernate ORM — Spring Boot BOM 관리, 현재 7.4.5.Final) |
+| 네이티브 | GraalVM Native Build Tools 1.1.8 |
+| 테스트 | JUnit5, ArchUnit 1.5.0, Konsist 0.17.3, Kotest 6.2.4 |
+| 정적분석 | PMD 7.27.0 (커스텀 룰셋) + SonarCloud (org.sonarqube 7.5.0.8588) |
 | 커버리지 | Kover 0.9.9 (라인 최소 30% 강제) |
 | CI | GitHub Actions (`.github/workflows/build.yml`) |
 
@@ -66,6 +66,7 @@
 ├── mise.toml                      # .gitignore 대상 (커밋 안 됨 — 정상)
 ├── settings.gradle.kts
 ├── build.gradle.kts
+├── gradle.properties              # 구성 캐시 활성화
 ├── .gitignore
 ├── .gitattributes
 ├── .gitmessage.txt
@@ -85,7 +86,7 @@
     │   ├── domain/Memo.kt
     │   ├── repository/MemoRepository.kt
     │   └── service/MemoService.kt
-    ├── main/resources/application.yaml
+    ├── main/resources/application.yml
     └── test/kotlin/{{GROUP 경로}}/{{PACKAGE_SEGMENT}}/
         ├── {{CLASS_PREFIX}}ApplicationTests.kt
         ├── architecture/ArchitectureTest.kt
@@ -272,20 +273,36 @@ graalvmNative {
 }
 ```
 
+`gradle.properties`:
+
+```properties
+# 구성 캐시(Configuration Cache): 구성 단계 결과를 재사용해 빌드 시작 시간을 단축한다.
+# 현재 플러그인 조합(kotlin/spring-boot/graalvm-native/kover/sonarqube/pmd) 전체에서 검증 완료 —
+# build·koverXmlReport·sonar·nativeCompile·bootRun 태스크 그래프 모두 문제 0건.
+# 문제 발생 시 기본 동작은 fail 이므로, 실행 시점에 Project 를 참조하는 코드가 유입되면 빌드가 차단된다.
+# 일시 우회가 필요하면 --no-configuration-cache 로 실행할 것.
+# https://docs.gradle.org/9.7.1/userguide/configuration_cache_enabling.html
+org.gradle.configuration-cache=true
+```
+
+⚠️ 구성 캐시가 켜져 있으므로 빌드 스크립트에서 **실행 시점에 `project`/`Task.project`를 참조하면
+빌드가 실패한다.** 값은 구성 시점에 `Provider`/`layout`/`providers`로 캡처하라 — 위
+`build.gradle.kts`의 `providers.gradleProperty(...)`, `layout.buildDirectory.file(...)` 사용이 그 예다.
+
 `gradle/libs.versions.toml`:
 
 ```toml
 [versions]
 kotlin = "2.4.10"
-spring-boot = "4.1.0"
+spring-boot = "4.1.1"
 spring-dependency-management = "1.1.7"
-graalvm-buildtools = "1.1.4"
-archunit = "1.4.2"
+graalvm-buildtools = "1.1.8"
+archunit = "1.5.0"
 konsist = "0.17.3"
-kotest = "6.2.3"
-pmd = "7.26.0"
+kotest = "6.2.4"
+pmd = "7.27.0"
 kover = "0.9.9"
-sonarqube = "7.3.1.8318"
+sonarqube = "7.5.0.8588"
 
 [libraries]
 # BOM 관리 (버전 생략 — io.spring.dependency-management가 버전 결정)
@@ -323,10 +340,10 @@ sonarqube = { id = "org.sonarqube", version.ref = "sonarqube" }
 wrapper jar는 바이너리이므로 명령으로 생성한다:
 
 ```bash
-mise exec gradle@9.6.1 -- gradle wrapper --gradle-version 9.6.1
+mise exec gradle@9.7.1 -- gradle wrapper --gradle-version 9.7.1
 ```
 
-(시스템에 gradle이 이미 있으면 `gradle wrapper --gradle-version 9.6.1`도 가능.)
+(시스템에 gradle이 이미 있으면 `gradle wrapper --gradle-version 9.7.1`도 가능.)
 결과: `gradlew`, `gradlew.bat`, `gradle/wrapper/gradle-wrapper.jar`, `gradle/wrapper/gradle-wrapper.properties`
 
 ## 7. Step 4 — git 지원 파일
@@ -566,7 +583,12 @@ jobs:
         with:
           distribution: graalvm # mise.toml(oracle-graalvm-25)과 정합
           java-version: '25'
-      - uses: gradle/actions/setup-gradle@3f131e8634966bd73d06cc69884922b02e6faf92 # v6.2.0 — 서드파티 액션은 SHA 핀 고정(Sonar S7637)
+      - uses: gradle/actions/setup-gradle@3f131e8634966bd73d06cc69884922b02e6faf92 # v6.2.0 — 서드파티 액션은 SHA 핀 고정(S7637)
+        with:
+          # 구성 캐시 데이터는 암호화 키를 줘야만 GitHub Actions 캐시에 저장/복원된다.
+          # (키 미설정 시 CI에서는 매 실행마다 구성 단계를 새로 계산 — 빌드는 정상 동작)
+          # 키 생성: openssl rand -base64 16 → 리포지토리 secret 에 GRADLE_ENCRYPTION_KEY 로 등록
+          cache-encryption-key: ${{ secrets.GRADLE_ENCRYPTION_KEY }}
       - name: Build & Test (koverVerify 포함)
         run: ./gradlew build koverXmlReport
       - name: SonarCloud 분석
@@ -732,7 +754,7 @@ data class MemoResponse(val id: Long, val title: String, val content: String) {
 }
 ```
 
-`src/main/resources/application.yaml`:
+`src/main/resources/application.yml`:
 
 ```yaml
 spring:
@@ -1046,27 +1068,31 @@ BOM이라 Spring Boot BOM 관리만으로도 나타난다)은 여전히 해석�
 으로 실패한다. 따라서 생성 직후 **`.module`뿐 아니라 `.pom` 항목까지 존재하는지** 반드시 확인한다:
 
 ```bash
-grep "hibernate-platform-<버전>.pom" gradle/verification-metadata.xml   # 예: 7.4.1.Final
+grep "hibernate-platform-<버전>.pom" gradle/verification-metadata.xml   # 예: 7.4.5.Final
 ```
 
 항목이 없으면(= flag로도 못 잡은 잔여 누락의 fallback) Maven Central의 공식 sha256과 직접
 계산값을 대조한 뒤 해당 component 블록에 `<artifact>` 항목을 수동으로 추가한다:
 
 ```bash
-V=7.4.1.Final
+V=7.4.5.Final
 BASE=https://repo.maven.apache.org/maven2/org/hibernate/orm/hibernate-platform/$V/hibernate-platform-$V.pom
 curl -s "$BASE" | shasum -a 256          # 계산값
 curl -s "$BASE.sha256"                    # Maven Central 공식 게시값 — 위와 일치해야 함
 ```
 
 `verification-metadata.xml`의 `hibernate-platform` component 블록에 아래처럼 추가한다(`.module` 항목 형식 참고).
-아래 sha256은 7.4.1.Final 기준 **예시값**이다 — 반드시 위에서 직접 대조한 값을 사용하라:
+아래 sha256은 7.4.5.Final 기준 **예시값**이다 — 반드시 위에서 직접 대조한 값을 사용하라:
 
 ```xml
-<artifact name="hibernate-platform-7.4.1.Final.pom">
-   <sha256 value="ba85ed562203cf69f73349bd5ea533e10e5f8cbe8a2b96f3473c2a75f5b2f232" origin="Maven Central published checksum"/>
+<artifact name="hibernate-platform-7.4.5.Final.pom">
+   <sha256 value="81bc3e829eb291243671bf102ae6150898e7e5bddc0a9e20e58043ddf7972f67" origin="Maven Central published checksum"/>
 </artifact>
 ```
+
+이번 Boot 4.1.0 → 4.1.1 업그레이드에서는 `--refresh-dependencies`만으로
+`hibernate-platform-7.4.5.Final.pom`이 자동 캡처되어 **수동 추가가 필요 없었다** — 이 절은
+그래도 안 잡힐 때의 fallback임을 명확히 한다.
 
 ⚠️ **이후 의존성을 업그레이드할 때(예: kover 0.9.8 → 0.9.9)도 이 파일을 함께 유지한다.**
 `libs.versions.toml`에서 버전만 올리면 새 아티팩트 체크섬이 등록되지 않아 검증이 실패한다.
@@ -1081,20 +1107,49 @@ curl -s "$BASE.sha256"                    # Maven Central 공식 게시값 — �
    재생성하면 이 체크섬들이 누락돼 CI에서만 실패한다. (실측: kotlin 2.4.0 → 2.4.10 업그레이드에서
    junit-bom 등 BOM `.module`/`.pom` 8건 + kotlin build-tools 2.4.0 메타데이터 4건이 누락돼
    CI의 `Dependency verification failed for configuration 'classpath'`로 실패했음.)
-2. **stale 항목 수동 제거**: `--write-verification-metadata`는 **append-only**다 —
+2. **Gradle wrapper 자체를 올릴 때는 검증 메타데이터도 함께 바뀐다**:
+   - `./gradlew wrapper --gradle-version <새 버전>` 실행 후 위 재생성 명령을 반드시 다시 실행한다.
+   - Gradle 9.7.x는 `dependency-verification-1.3.xsd` → **`1.4.xsd`**로 스키마 선언을 갱신한다
+     (파일 첫 줄 `xsi:schemaLocation` 변경 — 정상, 되돌리지 말 것).
+   - Gradle **내장 Kotlin** 버전의 `kotlin-stdlib` 체크섬이 새로 요구된다(9.7.1 실측: `kotlin-stdlib
+     2.4.0` jar/module 2건 추가 — 프로젝트가 쓰는 `2.4.10`과 별개이며 둘 다 남아 있어야 정상).
+3. **stale 항목 수동 제거**: `--write-verification-metadata`는 **append-only**다 —
    새 버전 체크섬은 추가하지만 구버전 `<component>` 블록은 지우지 않는다. 업그레이드한
    의존성의 구버전 component 블록을 직접 삭제한다. (kover 0.9.8 → 0.9.9 실측: 구버전
    component 4개 — `kover-features-jvm`·`kover-gradle-plugin`·`kover-jvm-agent`·
-   `org.jetbrains.kotlinx.kover.gradle.plugin` — 가 잔존했음.)
-3. **잔존 확인 함정 주의**: `grep '0.9.8'`처럼 버전 문자열을 그대로 grep하면 `.`이
+   `org.jetbrains.kotlinx.kover.gradle.plugin` — 가 잔존했음. 이후 7건 연속 업그레이드
+   누적 실측: 595개 컴포넌트 중 **191개 group:name이 다중 버전**으로 잔존 — spring-boot 4.1.0
+   계열 44개, kotest 6.2.3 15개, pmd 7.26.0 4개, graalvm 1.1.4 5개, archunit 1.4.2, sonarqube
+   7.3.1.8318, hibernate 7.4.1.Final, 그리고 Boot BOM이 끌던 logback/tomcat/jackson 등 전이
+   의존성 구버전 다수. 직접 올린 버전뿐 아니라 **BOM이 끌던 전이 의존성 구버전도 함께 stale**이
+   된다.)
+   - **탐지 one-liner** (버전 문자열 grep의 정규식 오탐을 피하는 구조적 방법):
+     ```bash
+     grep -oE '<component group="[^"]*" name="[^"]*" version="[^"]*"' gradle/verification-metadata.xml \
+       | sed -E 's/.*group="([^"]*)" name="([^"]*)" version="([^"]*)".*/\1:\2 \3/' \
+       | sort | awk '{a[$1]=a[$1]" "$2} END {for (k in a) if (split(a[k],x," ")>1) print k, a[k]}' | sort
+     ```
+   - **삭제하면 안 되는 정상 다중 버전**: 여러 버전이 동시에 정당하게 해석되는 케이스가 있다 —
+     parent/aggregator POM(`org.apache:apache`, `org.apache.commons:commons-parent`,
+     `com.fasterxml:oss-parent`, `org.eclipse.ee4j:project`)과 도구별로 다른 버전을 끌어오는
+     라이브러리(`net.bytebuddy:byte-buddy`, `org.antlr:antlr4-runtime`,
+     `org.checkerframework:checker-qual`, `net.java.dev.jna:jna`, `net.sf.saxon:Saxon-HE`).
+     판정 기준은 "새 버전이 있으니 삭제"가 아니라 **삭제 후
+     `./gradlew --refresh-dependencies clean build`가 통과하는가**이다.
+   - ⚠️ **파일을 지우고 전체 재생성하는 방식은 금지**: `verification-metadata.xml`에는
+     `graalvm-reachability-metadata-<버전>-repository.zip`처럼 **`nativeCompile` 실행 때만
+     해석되는 아티팩트**가 들어 있다. `clean build`만으로 전체 재생성하면 이런 항목이 통째로
+     사라져 나중에 `nativeCompile`이 `Dependency verification failed`로 깨진다. 반드시
+     **구버전 블록만 선택 삭제**할 것.
+4. **잔존 확인 함정 주의**: `grep '0.9.8'`처럼 버전 문자열을 그대로 grep하면 `.`이
    정규식 와일드카드로 동작해 **sha256 hex 값에 우연히 매칭**된다(오탐). 반드시 고정
    문자열로 확인한다:
    ```bash
    grep -Fc '0.9.8"' gradle/verification-metadata.xml   # 0 이어야 함 (닫는 따옴표까지 고정)
    ```
-4. **`<trusted-artifacts>` 보존 확인**: 재생성 시 이 블록은 보존되지만(순서만 바뀔 수
+5. **`<trusted-artifacts>` 보존 확인**: 재생성 시 이 블록은 보존되지만(순서만 바뀔 수
    있음), 커밋 전 `git diff`에서 유지 여부를 반드시 확인한다.
-5. **마무리**: `./gradlew clean build`로 검증 통과를 확인한 뒤 `libs.versions.toml`과
+6. **마무리**: `./gradlew clean build`로 검증 통과를 확인한 뒤 `libs.versions.toml`과
    `gradle/verification-metadata.xml`을 함께 커밋한다.
 
 ## 11. Step 8 — AGENTS.md 및 CLAUDE.md
@@ -1111,13 +1166,13 @@ curl -s "$BASE.sha256"                    # Maven Central 공식 게시값 — �
 
 ## 프로젝트 개요
 
-Spring Boot **4.1.0** + Kotlin **2.4.10** + JDK **25(GraalVM)** 기반 프로젝트.
+Spring Boot **4.1.1** + Kotlin **2.4.10** + JDK **25(GraalVM)** 기반 프로젝트.
 
-- 빌드: Gradle 9.6.1 (Kotlin DSL) + 버전 카탈로그 `gradle/libs.versions.toml`
+- 빌드: Gradle 9.7.1 (Kotlin DSL) + 버전 카탈로그 `gradle/libs.versions.toml`, 구성 캐시 활성화(`gradle.properties`)
 - DB: H2 (in-memory) + Spring Data JPA
 - 웹: Spring MVC (`spring-boot-starter-webmvc`)
 - 네이티브 이미지: GraalVM Native Build Tools 지원
-- 정적분석: PMD 7.26.0 (커스텀 룰셋 `.github/pmd/ruleset.xml`, 메서드 NCSS 30줄 제한, main 소스셋만)
+- 정적분석: PMD 7.27.0 (커스텀 룰셋 `.github/pmd/ruleset.xml`, 메서드 NCSS 30줄 제한, main 소스셋만)
 - 커버리지: Kover (라인 30% 미만이면 check 실패) + SonarCloud 연동 (`.github/workflows/build.yml`, `SONAR_TOKEN` secret 필요)
 - 샘플 도메인: `Memo` (최소 CRUD — 아키텍처 규칙 예시용)
 
@@ -1170,8 +1225,10 @@ mise install              # oracle-graalvm-25.0.3 설치 (mise.toml)
 - Mockito 기반 테스트(`@MockitoBean`/`@WebMvcTest` 등)는 런타임 바이트코드 생성이 필요해 네이티브 이미지(`nativeTest`)에서 동작 불가 → `@DisabledInNativeImage` 필수 (ArchUnit/Konsist 테스트도 동일)
 - 샘플 `Memo` 도메인 삭제 시 KonsistTest 규칙도 함께 정리할 것 (Konsist `assertTrue`는 빈 리스트에서 예외 발생)
 - `mise.toml`, `HELP.md`는 `.gitignore` 대상 (커밋되지 않는 것이 정상)
+- 구성 캐시(`org.gradle.configuration-cache=true`)가 켜져 있다. 빌드 스크립트에서 **실행 시점에 `project`/`Task.project`를 참조하면 빌드가 실패**하므로, 값은 구성 시점에 `Provider`/`layout`/`providers`로 캡처할 것. 태스크 그래프가 다르면 캐시 엔트리도 분리되므로 `build koverXmlReport`와 `sonar`는 서로 재사용되지 않는다. 문제 진단은 `build/reports/configuration-cache/`의 HTML 리포트를, 일시 우회는 `--no-configuration-cache`를 사용
+- CI에서 구성 캐시가 실제로 재사용되려면 `GRADLE_ENCRYPTION_KEY` secret이 필요하다(`setup-gradle`은 암호화 키 없이는 구성 캐시 데이터를 저장/복원하지 않음). 미설정이어도 빌드는 정상 동작하며 매 실행마다 구성 단계를 새로 계산할 뿐이다. 키 생성: `openssl rand -base64 16`
 - `gradle/verification-metadata.xml`의 `<trusted-artifacts>`는 인텔리제이 sync 전용 아티팩트(sources jar, IDE 내장 `kotlin-reflect`) 검증 실패 방지용 — 임의 삭제 금지. 인텔리제이에서만 `Dependency verification failed`가 나면 검증을 끄지 말고 실패 로그의 아티팩트를 `<trust>` 항목으로 좁게 추가할 것
-- 의존성 업그레이드 시 `./gradlew --write-verification-metadata sha256 --refresh-dependencies clean build koverXmlReport`로 검증 메타데이터를 재생성할 것. `--refresh-dependencies`가 없으면 웜 캐시에 이미 있는 아티팩트(특히 플러그인 classpath의 BOM `.module`/`.pom`, kotlin build-tools 메타데이터)를 다시 내려받지 않아 체크섬이 누락되고, 콜드 캐시인 CI의 `configuration 'classpath'` 검증에서만 `Dependency verification failed`로 실패한다(터미널 로컬 빌드는 통과). 이 명령은 append-only라 구버전 항목이 남으므로 stale `<component>`를 수동 제거하고, 잔존 확인은 정규식 오탐(`.`이 sha256 hex에 매칭)을 피해 `grep -Fc '<구버전>"'`(0이어야 함)으로 할 것. `<trusted-artifacts>` 블록은 보존 확인
+- 의존성 추가/버전 변경 시 `./gradlew --write-verification-metadata sha256 --refresh-dependencies clean build koverXmlReport`로 `gradle/verification-metadata.xml`을 재생성할 것. `--refresh-dependencies`가 없으면 웜 캐시에 이미 있는 아티팩트(특히 플러그인 classpath의 BOM `.module`/`.pom`, kotlin build-tools 메타데이터)를 다시 내려받지 않아 체크섬이 누락되고, 콜드 캐시인 CI의 `configuration 'classpath'` 검증에서만 `Dependency verification failed`로 실패한다(터미널 로컬 빌드는 통과). 이 명령은 append-only라 구버전 항목이 남으므로 stale `<component>`를 수동 제거하고, 잔존 확인은 정규식 오탐(`.`이 sha256 hex에 매칭)을 피해 `grep -Fc '<구버전>"'`(0이어야 함)으로 할 것. **파일 전체 재생성 금지(네이티브 전용 아티팩트 유실), 구버전 `<component>`만 선택 삭제**. `<trusted-artifacts>` 블록은 보존 확인
 ````
 
 ### 11-2. `CLAUDE.md` (프로젝트 루트 — 얇은 포인터)
@@ -1206,11 +1263,14 @@ git commit -m "🎉 release(config): initialize {{PROJECT_NAME}} 프로젝트"
 2. `./gradlew build` → **BUILD SUCCESSFUL** + 테스트 16개 전체 통과
    (contextLoads 1 + MemoControllerTest 1 + ArchitectureTest 6 + KonsistTest 8), PMD 위반 0,
    koverVerify(라인 30% 기준) 통과
-3. `./gradlew koverHtmlReport` → `build/reports/kover/html/index.html` 생성 확인
-4. ⚠️ `./gradlew sonar`는 부트스트랩 검증에서 **실행하지 마라** — SonarCloud 프로젝트
+3. 구성 캐시 확인: `./gradlew build koverXmlReport`를 **연속 2회** 실행해 2회차 로그에
+   `Reusing configuration cache.`가 나오는지 확인. 문제가 있으면
+   `build/reports/configuration-cache/`의 HTML 리포트를 볼 것
+4. `./gradlew koverHtmlReport` → `build/reports/kover/html/index.html` 생성 확인
+5. ⚠️ `./gradlew sonar`는 부트스트랩 검증에서 **실행하지 마라** — SonarCloud 프로젝트
    import(Automatic Analysis 비활성화) 및 GitHub secret `SONAR_TOKEN` 등록이 선행돼야 하는
    수동 조치이며, 없으면 실패하는 것이 정상이다
-5. 스모크 테스트:
+6. 스모크 테스트:
    ```bash
    ./gradlew bootRun & BOOT_PID=$!
    # 기동 대기: 2초 간격 폴링, 최대 60초 (실패 시 무한 대기 금지)
@@ -1221,8 +1281,8 @@ git commit -m "🎉 release(config): initialize {{PROJECT_NAME}} 프로젝트"
    curl -s -o /dev/null -w '%{http_code}' localhost:8080/api/memos/999   # 404
    kill $BOOT_PID                # bootRun 종료
    ```
-6. (선택, 장시간) `./gradlew nativeCompile`
-7. (선택, 장시간) `./gradlew nativeTest` → **BUILD SUCCESSFUL**. 단, 네이티브 이미지에서는
+7. (선택, 장시간) `./gradlew nativeCompile`
+8. (선택, 장시간) `./gradlew nativeTest` → **BUILD SUCCESSFUL**. 단, 네이티브 이미지에서는
    `contextLoads`(`{{CLASS_PREFIX}}ApplicationTests`) 1개만 실행/통과하고
    `MemoControllerTest`(Mockito)·`ArchitectureTest`·`KonsistTest`는 모두
    `@DisabledInNativeImage`로 **스킵되는 것이 정상**이다. 스킵을 실패로 오인해
@@ -1267,4 +1327,5 @@ Gradle 의 **Gradle JVM**을 등록된 GraalVM 25 SDK로 명시 지정하라(`.i
 - Kover 필터의 `*__*` 제외는 Spring AOT 생성 클래스(`__BeanDefinitions`, `__TestContext*` 등)가 분모를 부풀려 커버리지를 왜곡(실측 0.25%까지 하락)하는 것을 막는 설정 — 임의 삭제 금지.
 - `minBound(30)`은 샘플 코드 실측 커버리지(30.8%) 기준 — 테스트 보강 시 상향할 것.
 - Mockito 기반 테스트(`@MockitoBean`/`@WebMvcTest` 등)는 런타임 바이트코드 생성(ByteBuddy)이 필요해 GraalVM 네이티브 이미지에서 동작 불가 — `MemoControllerTest`의 `@DisabledInNativeImage`를 임의 제거하지 말고(JVM `test`에서는 계속 실행됨), 이후 추가되는 목 기반 테스트도 동일하게 처리할 것 (상세는 §13의 nativeTest 항목).
+- `gradle.properties`의 `org.gradle.configuration-cache=true`는 현재 플러그인 조합 전체에서 검증을 마친 설정이다. 구성 캐시 오류가 나면 이 설정을 끄지 말고, 실행 시점에 `Project`를 참조하는 코드를 제거하는 방향으로 수정할 것 (진단은 `build/reports/configuration-cache/`의 HTML 리포트).
 - `gradle/verification-metadata.xml`은 로컬(warm cache)에서 완전해 보여도 CI cold cache에서만 누락이 드러날 수 있다. 근본 예방책은 재생성 시 항상 `--refresh-dependencies`를 붙이는 것이며, CI 검증 실패 시 검증을 끄지 말 것 — 상세 원리와 대처 절차는 §10·§13 참고.
