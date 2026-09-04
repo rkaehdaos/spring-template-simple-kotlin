@@ -6,7 +6,7 @@
 
 Spring Boot **4.1.1** + Kotlin **2.4.10** + JDK **25(GraalVM)** 기반 템플릿 프로젝트.
 
-- 빌드: Gradle 9.7.1 (Kotlin DSL) + 버전 카탈로그 `gradle/libs.versions.toml`
+- 빌드: Gradle 9.7.1 (Kotlin DSL) + 버전 카탈로그 `gradle/libs.versions.toml`, 구성 캐시 활성화(`gradle.properties`)
 - DB: H2 (in-memory) + Spring Data JPA
 - 웹: Spring MVC (`spring-boot-starter-webmvc`)
 - 네이티브 이미지: GraalVM Native Build Tools 지원
@@ -63,5 +63,7 @@ mise install              # oracle-graalvm-25.0.3 설치 (mise.toml)
 - Mockito 기반 테스트(`@MockitoBean`/`@WebMvcTest` 등)는 런타임 바이트코드 생성이 필요해 네이티브 이미지(`nativeTest`)에서 동작 불가 → `@DisabledInNativeImage` 필수 (ArchUnit/Konsist 테스트도 동일)
 - 샘플 `Memo` 도메인 삭제 시 KonsistTest 규칙도 함께 정리할 것 (Konsist `assertTrue`는 빈 리스트에서 예외 발생)
 - `mise.toml`, `HELP.md`는 `.gitignore` 대상 (커밋되지 않는 것이 정상)
+- 구성 캐시(`org.gradle.configuration-cache=true`)가 켜져 있다. 빌드 스크립트에서 **실행 시점에 `project`/`Task.project`를 참조하면 빌드가 실패**하므로, 값은 구성 시점에 `Provider`/`layout`/`providers`로 캡처할 것. 태스크 그래프가 다르면 캐시 엔트리도 분리되므로 `build koverXmlReport`와 `sonar`는 서로 재사용되지 않는다. 문제 진단은 `build/reports/configuration-cache/`의 HTML 리포트를, 일시 우회는 `--no-configuration-cache`를 사용
+- CI에서 구성 캐시가 실제로 재사용되려면 `GRADLE_ENCRYPTION_KEY` secret이 필요하다(`setup-gradle`은 암호화 키 없이는 구성 캐시 데이터를 저장/복원하지 않음). 미설정이어도 빌드는 정상 동작하며 매 실행마다 구성 단계를 새로 계산할 뿐이다. 키 생성: `openssl rand -base64 16`
 - `gradle/verification-metadata.xml`의 `<trusted-artifacts>`는 인텔리제이 sync 전용 아티팩트(sources jar, IDE 내장 `kotlin-reflect`) 검증 실패 방지용 — 임의 삭제 금지. 인텔리제이에서만 `Dependency verification failed`가 나면 검증을 끄지 말고 실패 로그의 아티팩트를 `<trust>` 항목으로 좁게 추가할 것
 - 의존성 추가/버전 변경 시 `./gradlew --write-verification-metadata sha256 --refresh-dependencies clean build koverXmlReport`로 `gradle/verification-metadata.xml`을 재생성할 것. `--refresh-dependencies`가 없으면 웜 캐시에 이미 있는 아티팩트(특히 플러그인 classpath의 BOM `.module`/`.pom`, kotlin build-tools 메타데이터)를 다시 내려받지 않아 체크섬이 누락되고, 콜드 캐시인 CI의 `configuration 'classpath'` 검증에서만 `Dependency verification failed`로 실패한다(터미널 로컬 빌드는 통과). 이 명령은 append-only라 구버전 항목이 남으므로 stale `<component>`를 수동 제거하고, 잔존 확인은 정규식 오탐(`.`이 sha256 hex에 매칭)을 피해 `grep -Fc '<구버전>"'`(0이어야 함)으로 할 것. **파일 전체 재생성 금지(네이티브 전용 아티팩트 유실), 구버전 `<component>`만 선택 삭제**. `<trusted-artifacts>` 블록은 보존 확인
